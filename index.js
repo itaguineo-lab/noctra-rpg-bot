@@ -70,12 +70,12 @@ function getActiveEvents() {
 function getMainMenuText(player, username = null) {
     const xpNeeded = xpToNext(player.level);
     const xpPercent = Math.floor((player.xp / xpNeeded) * 100);
-    const xpBar = progressBar(player.xp, xpNeeded, 10);
-    const hpBar = progressBar(player.hp, player.maxHp, 10);
-    const energyBar = progressBar(player.energy, player.maxEnergy, 10);
+    const xpBar = progressBar(player.xp, xpNeeded, 8);
+    const hpBar = progressBar(player.hp, player.maxHp, 8);
+    const energyBar = progressBar(player.energy, player.maxEnergy, 8);
     
     const events = getActiveEvents();
-    const eventText = events.length > 0 ? `🎉 EVENTOS: ${events.join(' | ')}\n` : '';
+    const eventText = events.length > 0 ? events.join(' | ') : 'Nenhum';
     
     const vipText = player.vipExpires ? `✨ VIP até ${new Date(player.vipExpires).toLocaleDateString()}\n` : '';
     
@@ -83,31 +83,21 @@ function getMainMenuText(player, username = null) {
     
     return (
         `🌙 *Nocta*\n\n` +
-        `👤 ${nameDisplay} (${player.class.charAt(0).toUpperCase() + player.class.slice(1)})\n` +
+        `*${nameDisplay}* (${player.class.charAt(0).toUpperCase() + player.class.slice(1)})\n` +
         `Nv. ${player.level} | XP: ${formatNumber(player.xp)} (Faltam: ${formatNumber(xpNeeded - player.xp)})\n` +
         `[${xpBar}] ${xpPercent}%\n\n` +
-        `❤️ HP: ${player.hp}/${player.maxHp} [${hpBar}] ${Math.floor((player.hp/player.maxHp)*100)}%\n` +
-        `⚡ Energia: ${player.energy}/${player.maxEnergy} [${energyBar}] ${Math.floor((player.energy/player.maxEnergy)*100)}%\n` +
+        `❤️ HP: ${player.hp}/${player.maxHp}\n` +
+        `[${hpBar}] ${Math.floor((player.hp/player.maxHp)*100)}%\n` +
+        `⚡ Energia: ${player.energy}/${player.maxEnergy}\n` +
+        `[${energyBar}] ${Math.floor((player.energy/player.maxEnergy)*100)}%\n\n` +
         `⚔️ ATK ${player.atk} | 🛡️ DEF ${player.def} | ✨ CRIT ${player.crit}%\n\n` +
-        `${eventText}` +
+        `🎉 EVENTOS: ${eventText}\n` +
         `${vipText}` +
         `🗝️ Chaves: ${player.keys}\n` +
         `💎 Runas: ${player.runas}\n` +
         `💰 Gold: ${formatNumber(player.gold)}\n` +
-        `🗺️ Mapa: ${getMap(player).name} (Lv ${getMap(player).level})\n`
+        `🗺️ Mapa: ${getMap(player).name} (Lv ${getMap(player).level})`
     );
-}
-
-// ========== MENUS ==========
-function mainMenu() {
-    return Markup.inlineKeyboard([
-        [Markup.button.callback('⚔️ Caçar', 'hunt'), Markup.button.callback('🗺️ Viajar', 'travel')],
-        [Markup.button.callback('🎒 Inventário', 'inventory'), Markup.button.callback('👤 Perfil', 'profile')],
-        [Markup.button.callback('🛒 Loja', 'shop'), Markup.button.callback('🏛️ Masmorra', 'dungeon')],
-        [Markup.button.callback('🏆 Arena', 'arena'), Markup.button.callback('🤝 Guilda', 'guild')],
-        [Markup.button.callback('⚡ Energia', 'energy'), Markup.button.callback('💎 VIP', 'vip')],
-        [Markup.button.callback('👥 Online', 'online')]
-    ]);
 }
 
 function combatMenu() {
