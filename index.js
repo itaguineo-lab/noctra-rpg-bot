@@ -9,25 +9,25 @@ const { progressBar } = require('./utils');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// Servidor Render
+// servidor (Render)
 const app = express();
-app.get('/', (req, res) => res.send('NOCTRA RPG ONLINE'));
+app.get('/', (req, res) => res.send('NOCTRA ONLINE'));
 app.listen(process.env.PORT || 3000);
 
-// MENU PRINCIPAL
+// ================= MENU =================
 
-function menu() {
+function mainMenu() {
   return Markup.inlineKeyboard([
     [Markup.button.callback('⚔️ Caçar', 'hunt')],
-    [Markup.button.callback('👤 Status', 'status')],
+    [Markup.button.callback('👤 Status', 'status')]
   ]);
 }
 
 bot.start((ctx) => {
-  ctx.reply('🌑 NOCTRA RPG\n\nEscolha uma ação:', menu());
+  ctx.reply('🌑 NOCTRA RPG\n\nEscolha uma ação:', mainMenu());
 });
 
-// CAÇAR
+// ================= CAÇAR =================
 
 bot.action('hunt', async (ctx) => {
   await ctx.answerCbQuery();
@@ -36,12 +36,16 @@ bot.action('hunt', async (ctx) => {
   updateEnergy(player);
 
   if (!useEnergy(player)) {
-    return ctx.answerCbQuery('❌ Sem energia!', { show_alert: true });
+    return ctx.editMessageText(
+      '❌ Sem energia!\n\nAguarde regenerar.',
+      Markup.inlineKeyboard([
+        [Markup.button.callback('🏠 Menu', 'menu')]
+      ])
+    );
   }
 
   const result = fight(player);
   const leveledUp = checkLevelUp(player);
-
   const xpMax = xpToNext(player.level);
 
   let msg = `⚔️ COMBATE\n\n`;
@@ -64,16 +68,16 @@ bot.action('hunt', async (ctx) => {
     msg += `\n\n🔥 LEVEL UP!`;
   }
 
-  await ctx.editMessageText(
+  ctx.editMessageText(
     msg,
     Markup.inlineKeyboard([
       [Markup.button.callback('⚔️ Caçar novamente', 'hunt')],
-      [Markup.button.callback('🏠 Menu', 'menu')],
+      [Markup.button.callback('🏠 Menu', 'menu')]
     ])
   );
 });
 
-// STATUS
+// ================= STATUS =================
 
 bot.action('status', async (ctx) => {
   await ctx.answerCbQuery();
@@ -94,22 +98,23 @@ bot.action('status', async (ctx) => {
     `⚡ Energia: ${player.energy}/20\n` +
     `💰 Gold: ${player.gold}`;
 
-  await ctx.editMessageText(
+  ctx.editMessageText(
     msg,
     Markup.inlineKeyboard([
-      [Markup.button.callback('🏠 Menu', 'menu')],
+      [Markup.button.callback('⚔️ Caçar', 'hunt')],
+      [Markup.button.callback('🏠 Menu', 'menu')]
     ])
   );
 });
 
-// MENU BUTTON
+// ================= MENU =================
 
 bot.action('menu', async (ctx) => {
   await ctx.answerCbQuery();
 
-  await ctx.editMessageText(
+  ctx.editMessageText(
     '🌑 NOCTRA RPG\n\nEscolha uma ação:',
-    menu()
+    mainMenu()
   );
 });
 
