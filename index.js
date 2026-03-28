@@ -193,8 +193,27 @@ bot.action(/item_(.+)/, async (ctx) => {
       [Markup.button.callback('💰 Vender', `sell_${index}`)],
       [Markup.button.callback('⬅️ Voltar', 'inventory')]
     ])
+
+bot.action(/sell_(.+)/, async (ctx) => {
+  await ctx.answerCbQuery();
+
+  const index = ctx.match[1];
+  const player = getPlayer(ctx.from.id);
+
+  const item = player.inventory[index];
+  if (!item) return;
+
+  player.gold += item.price;
+  player.inventory.splice(index, 1);
+
+  ctx.editMessageText(
+    `💰 Item vendido!\n+${item.price} Gold`,
+    Markup.inlineKeyboard([
+      [Markup.button.callback('🎒 Inventário', 'inventory')],
+      [Markup.button.callback('🏠 Menu', 'menu')]
+    ])
   );
-});
+  );
 });
 
 bot.launch();
