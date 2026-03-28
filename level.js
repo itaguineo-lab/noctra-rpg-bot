@@ -1,18 +1,22 @@
-function checkLevelUp(player) {
-  const neededXp = player.level * 50;
+function xpToNext(level) {
+  return level * 50; // curva simples (depois ajustamos)
+}
 
-  if (player.xp >= neededXp) {
-    player.xp -= neededXp;
+function checkLevelUp(player) {
+  let up = false;
+
+  while (player.xp >= xpToNext(player.level)) {
+    player.xp -= xpToNext(player.level);
     player.level += 1;
 
     player.maxHp += 10;
     player.atk += 2;
     player.def += 1;
 
-    return true;
+    up = true;
   }
 
-  return false;
+  return up;
 }
 
-module.exports = { checkLevelUp };
+module.exports = { checkLevelUp, xpToNext };
