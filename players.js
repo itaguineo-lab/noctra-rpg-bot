@@ -14,7 +14,8 @@ function getPlayer(id) {
       lastEnergy: Date.now(),
 
       inventory: [],
-      weapon: null
+      weapon: null,
+      maxInventory: 10
     };
   }
   return players[id];
