@@ -23,8 +23,8 @@ function startCombat(player, enemy) {
             critBonus: 0,
             shield: 0,
             shieldDuration: 0,
-            souls: player.souls.filter(s => s !== null), // almas equipadas
-            soulsUsed: {}, // controle de uso no combate
+            souls: player.souls.filter(s => s !== null),
+            soulsUsed: {},
             frozen: false
         },
         enemy: {
@@ -44,17 +44,14 @@ function startCombat(player, enemy) {
 }
 
 function playerAttack(state) {
-    // Verifica se o inimigo está congelado
     let enemyDamage = 0;
     let enemyFrozen = state.enemy.frozen;
     
-    // Dano do jogador
     const baseDamage = calculateDamage(state.player.atk, state.enemy.def);
     const { damage, isCrit } = calculateCritDamage(baseDamage, state.player.crit, state.player.critBonus);
     state.enemy.hp -= damage;
     let message = `⚔️ Você causou *${damage}* de dano${isCrit ? ' (CRÍTICO!)' : ''}.`;
     
-    // Se o inimigo estava congelado, ele não ataca
     if (enemyFrozen) {
         message += `\n❄️ Inimigo está congelado e perdeu o turno!`;
         state.enemy.frozen = false;
@@ -62,7 +59,6 @@ function playerAttack(state) {
         const enemyBaseDamage = calculateDamage(state.enemy.atk, state.player.def);
         let rawDamage = Math.floor(enemyBaseDamage);
         
-        // Aplica escudo se ativo
         if (state.player.shieldDuration > 0 && state.player.shield > 0) {
             rawDamage = Math.floor(rawDamage * (1 - state.player.shield));
             message += `\n🛡️ Escudo reduziu o dano para *${rawDamage}*!`;
@@ -75,7 +71,6 @@ function playerAttack(state) {
         message += `\n🐺 Inimigo causou *${enemyDamage}* de dano.`;
     }
     
-    // Verifica morte
     if (state.enemy.hp <= 0) {
         state.ended = true;
         state.winner = 'player';
@@ -83,13 +78,11 @@ function playerAttack(state) {
     }
     
     if (state.player.hp <= 0) {
-        // Verifica se tem alma de ressurreição
         const phoenixSoul = state.player.souls.find(s => s && s.effect.type === 'revive');
         if (phoenixSoul && !state.player.soulsUsed[phoenixSoul.id]) {
             state.player.soulsUsed[phoenixSoul.id] = true;
             state.player.hp = Math.floor(state.player.maxHp * 0.3);
             message += `\n🐦‍🔥 *Alma da Fênix* reviveu você com ${state.player.hp} HP!`;
-            state.ended = false;
             return { message, ended: false, damage, enemyDamage };
         }
         state.ended = true;
@@ -133,7 +126,6 @@ function useSoul(state, soul) {
     state.player.soulsUsed[soul.id] = true;
     const result = require('./souls').activateSoul(soul, state);
     
-    // Verifica morte do inimigo após usar alma
     if (state.enemy.hp <= 0) {
         state.ended = true;
         state.winner = 'player';
