@@ -96,6 +96,8 @@ bot.action('hunt', async (ctx) => {
 bot.action('inventory', async (ctx) => {
   await ctx.answerCbQuery();
 
+`🎒 Inventário: ${player.inventory.length}/${player.maxInventory}\n`
+
   const player = getPlayer(ctx.from.id);
 
   if (player.inventory.length === 0) {
