@@ -29,7 +29,6 @@ function generateItem(playerLevel, forcedType = null) {
     const type = forcedType || itemTypes[Math.floor(Math.random() * itemTypes.length)];
     const rarity = getRarity();
 
-    // Bônus baseado no nível e raridade
     const levelBonus = Math.floor(playerLevel * 0.5);
     const atk = Math.floor((type.atkBase + levelBonus) * rarity.mult);
     const def = Math.floor((type.defBase + levelBonus) * rarity.mult);
@@ -37,7 +36,6 @@ function generateItem(playerLevel, forcedType = null) {
     const hp = Math.floor((type.hpBase + levelBonus) * rarity.mult);
     const extraSlots = type.extraSlots ? Math.floor(type.extraSlots * rarity.mult) : 0;
 
-    // Nome do item
     const name = `${rarity.name} ${type.namePrefix}`;
 
     return {
