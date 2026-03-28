@@ -83,11 +83,23 @@ bot.start(async (ctx) => {
 // Ação principal: Caçar
 bot.action('hunt', async (ctx) => {
     const player = getPlayer(ctx.from.id);
-    updateEnergy(player);
-
+    updateEnergy(player); // implementar depois
     if (!useEnergy(player)) {
         return ctx.editMessageText('⚠️ *Energia insuficiente!* Aguarde a regeneração.', { parse_mode: 'Markdown', ...mainMenu() });
     }
+
+    const enemy = getRandomEnemy(player); // de maps.js
+    const combatState = startCombat(player, enemy);
+    activeFights.set(ctx.from.id, combatState);
+
+    const msg = `⚔️ *Combate iniciado!*\n\n` +
+                `🐺 *${enemy.name}* (Nv. ${enemy.minLevel})\n` +
+                `❤️ ${enemy.hp} HP | ⚔️ ${enemy.atk} ATK | 🛡️ ${enemy.def} DEF\n\n` +
+                `❤️ Seu HP: ${player.hp}/${player.maxHp}\n` +
+                `⚡ Energia: ${player.energy}/${player.maxEnergy}\n\n` +
+                `Escolha sua ação:`;
+    await ctx.editMessageText(msg, combatMenu());
+});
 
     // Escolher inimigo
     const enemy = getRandomEnemy(player);
