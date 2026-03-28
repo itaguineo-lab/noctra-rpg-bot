@@ -9,7 +9,7 @@ const { progressBar } = require('./utils');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// servidor (Render precisa disso)
+// Servidor (Render precisa)
 const app = express();
 
 app.get('/', (req, res) => {
@@ -30,7 +30,7 @@ bot.start((ctx) => {
   );
 });
 
-// CAÇAR (COMBATE COMPLETO)
+// CAÇAR
 
 bot.action('hunt', async (ctx) => {
   await ctx.answerCbQuery();
@@ -43,8 +43,8 @@ bot.action('hunt', async (ctx) => {
   }
 
   const result = fight(player);
-
   const leveledUp = checkLevelUp(player);
+
   const xpMax = xpToNext(player.level);
 
   let msg = `⚔️ COMBATE\n\n`;
@@ -56,7 +56,7 @@ bot.action('hunt', async (ctx) => {
     msg += `💀 Derrota para ${result.enemy}\n\n`;
   }
 
-  msg += `📊 LEVEL ${player.level}\n`;
+  msg += `📊 Level ${player.level}\n`;
   msg += progressBar(player.xp, xpMax) + `\n`;
   msg += `${player.xp}/${xpMax} XP\n\n`;
 
