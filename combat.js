@@ -1,48 +1,93 @@
-const { calculateDamage } = require('./combatUtils'); // vou criar
-
+// combat.js
 function calculateDamage(atk, def) {
     const damage = Math.max(1, Math.floor(atk * (1 - def / (def + 100))));
     return damage;
 }
 
+function calculateCritDamage(baseDamage, critChance, critBonus = 0) {
+    const isCrit = Math.random() * 100 <= critChance;
+    if (isCrit) {
+        const finalDamage = Math.floor(baseDamage * (1.5 + critBonus));
+        return { damage: finalDamage, isCrit: true };
+    }
+    return { damage: baseDamage, isCrit: false };
+}
+
 function startCombat(player, enemy) {
+    // Copiamos os atributos atuais para o estado de combate
     return {
-        player: { ...player }, // cópia dos stats atuais (hp, etc)
-        enemy: { ...enemy },
+        player: {
+            hp: player.hp,
+            maxHp: player.maxHp,
+            atk: player.atk,
+            def: player.def,
+            crit: player.crit,
+            agi: player.agi,
+            critBonus: 0 // poderá ser aumentado por almas
+        },
+        enemy: {
+            ...enemy,
+            hp: enemy.hp,
+            maxHp: enemy.hp,
+            atk: enemy.atk,
+            def: enemy.def,
+            exp: enemy.exp,
+            gold: enemy.gold
+        },
         turn: 0,
         ended: false,
-        winner: null
+        winner: null,
+        messages: []
     };
 }
 
 function playerAttack(state) {
-    const damage = calculateDamage(state.player.atk, state.enemy.def);
+    // Jogador ataca
+    const baseDamage = calculateDamage(state.player.atk, state.enemy.def);
+    const { damage, isCrit } = calculateCritDamage(baseDamage, state.player.crit, state.player.critBonus);
     state.enemy.hp -= damage;
+    let message = `⚔️ Você causou *${damage}* de dano${isCrit ? ' (CRÍTICO!)' : ''}.`;
+
     if (state.enemy.hp <= 0) {
         state.ended = true;
         state.winner = 'player';
-        return { damage, enemyDied: true };
+        return { message, ended: true, winner: 'player' };
     }
-    // inimigo contra-ataca
-    const enemyDamage = calculateDamage(state.enemy.atk, state.player.def);
+
+    // Inimigo contra-ataca
+    const enemyBaseDamage = calculateDamage(state.enemy.atk, state.player.def);
+    const enemyDamage = Math.floor(enemyBaseDamage);
     state.player.hp -= enemyDamage;
+    message += `\n🐺 Inimigo causou *${enemyDamage}* de dano.`;
+
     if (state.player.hp <= 0) {
         state.ended = true;
         state.winner = 'enemy';
-        return { damage, enemyDamage, playerDied: true };
+        return { message, ended: true, winner: 'enemy' };
     }
-    return { damage, enemyDamage };
+
+    return { message, ended: false };
 }
 
-function useItem(state, item) {
-    // aplicar efeito do item (cura, buff, etc)
-    // simplificado: apenas poção de vida
-    if (item.type === 'potion') {
-        const heal = item.value;
-        state.player.hp = Math.min(state.player.maxHp, state.player.hp + heal);
-        return { healed: heal };
+function playerFlee(state) {
+    const chance = 0.5; // 50% de sucesso
+    if (Math.random() < chance) {
+        state.ended = true;
+        state.winner = 'fled';
+        return { message: '🏃 Você fugiu com sucesso!', success: true };
+    } else {
+        // Fuga falha: inimigo ataca
+        const enemyBaseDamage = calculateDamage(state.enemy.atk, state.player.def);
+        const enemyDamage = Math.floor(enemyBaseDamage);
+        state.player.hp -= enemyDamage;
+        let message = `🏃 Fuga falhou! O inimigo causou *${enemyDamage}* de dano.`;
+        if (state.player.hp <= 0) {
+            state.ended = true;
+            state.winner = 'enemy';
+            message += '\n💀 Você foi derrotado.';
+        }
+        return { message, success: false };
     }
-    // outros itens...
 }
 
-module.exports = { startCombat, playerAttack, calculateDamage, useItem };
+module.exports = { calculateDamage, calculateCritDamage, startCombat, playerAttack, playerFlee };
