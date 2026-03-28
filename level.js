@@ -1,5 +1,5 @@
 function xpToNext(level) {
-  return level * 50; // curva simples (depois ajustamos)
+  return level * 50;
 }
 
 function checkLevelUp(player) {
