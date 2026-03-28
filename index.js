@@ -12,7 +12,7 @@ const { generateItem } = require('./items');
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
 // Estado de combate (simples, armazenado em memória)
-const activeFights = new Map();
+const activeFights = new Map(); // key: userId, value: combatState
 
 // Servidor para manter o bot acordado
 const app = express();
