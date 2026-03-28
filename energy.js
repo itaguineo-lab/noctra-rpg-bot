@@ -1,6 +1,6 @@
 function updateEnergy(player) {
   const now = Date.now();
-  const diff = Math.floor((now - player.lastEnergy) / 60000); // 1 min
+  const diff = Math.floor((now - player.lastEnergy) / 60000);
 
   if (diff > 0) {
     player.energy = Math.min(player.energy + diff, 20);
