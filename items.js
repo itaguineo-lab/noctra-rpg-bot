@@ -6,12 +6,13 @@ const raridades = [
 ];
 
 const itemTypes = [
-    { slot: "weapon", baseAtk: 5, baseDef: 0, baseCrit: 0, baseHp: 0 },
-    { slot: "armor", baseAtk: 0, baseDef: 5, baseCrit: 0, baseHp: 0 },
-    { slot: "helmet", baseAtk: 0, baseDef: 3, baseCrit: 0, baseHp: 5 },
-    { slot: "boots", baseAtk: 0, baseDef: 2, baseCrit: 0, baseHp: 3 },
-    { slot: "ring", baseAtk: 2, baseDef: 0, baseCrit: 2, baseHp: 0 },
-    { slot: "necklace", baseAtk: 1, baseDef: 1, baseCrit: 1, baseHp: 2 }
+    { slot: "weapon", namePrefix: "Espada", atkBase: 5, defBase: 0, critBase: 0, hpBase: 0 },
+    { slot: "armor", namePrefix: "Armadura", atkBase: 0, defBase: 5, critBase: 0, hpBase: 0 },
+    { slot: "helmet", namePrefix: "Elmo", atkBase: 0, defBase: 3, critBase: 0, hpBase: 5 },
+    { slot: "boots", namePrefix: "Botas", atkBase: 0, defBase: 2, critBase: 0, hpBase: 3 },
+    { slot: "ring", namePrefix: "Anel", atkBase: 2, defBase: 0, critBase: 2, hpBase: 0 },
+    { slot: "necklace", namePrefix: "Colar", atkBase: 1, defBase: 1, critBase: 1, hpBase: 2 },
+    { slot: "bag", namePrefix: "Mochila", atkBase: 0, defBase: 0, critBase: 0, hpBase: 0, extraSlots: 5 }
 ];
 
 function getRarity() {
@@ -27,17 +28,21 @@ function getRarity() {
 function generateItem(playerLevel, forcedType = null) {
     const type = forcedType || itemTypes[Math.floor(Math.random() * itemTypes.length)];
     const rarity = getRarity();
-    
+
     // Bônus baseado no nível e raridade
     const levelBonus = Math.floor(playerLevel * 0.5);
-    const atk = Math.floor((type.baseAtk + levelBonus) * rarity.mult);
-    const def = Math.floor((type.baseDef + levelBonus) * rarity.mult);
-    const crit = Math.floor((type.baseCrit + levelBonus/2) * rarity.mult);
-    const hp = Math.floor((type.baseHp + levelBonus) * rarity.mult);
+    const atk = Math.floor((type.atkBase + levelBonus) * rarity.mult);
+    const def = Math.floor((type.defBase + levelBonus) * rarity.mult);
+    const crit = Math.floor((type.critBase + levelBonus/2) * rarity.mult);
+    const hp = Math.floor((type.hpBase + levelBonus) * rarity.mult);
+    const extraSlots = type.extraSlots ? Math.floor(type.extraSlots * rarity.mult) : 0;
+
+    // Nome do item
+    const name = `${rarity.name} ${type.namePrefix}`;
 
     return {
-        id: Date.now() + Math.random(), // id único
-        name: `${rarity.name} ${type.slot.charAt(0).toUpperCase() + type.slot.slice(1)}`,
+        id: Date.now() + Math.random() + Math.floor(Math.random() * 1000),
+        name: name,
         slot: type.slot,
         rarity: rarity.name,
         emoji: rarity.emoji,
@@ -45,6 +50,7 @@ function generateItem(playerLevel, forcedType = null) {
         def: def,
         crit: crit,
         hp: hp,
+        extraSlots: extraSlots,
         price: Math.floor(rarity.price * (playerLevel / 5 + 1))
     };
 }
