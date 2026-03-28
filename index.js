@@ -27,8 +27,27 @@ function getPlayerUpdated(id) {
 function getPlayerSafe(id) {
     const player = getPlayer(id);
     updateEnergy(player);
-    recalculateStats(player); // garante stats atualizados
+    recalculateStats(player);
     return player;
+}
+
+// Cores dos equipamentos por raridade
+function getRarityColor(rarity) {
+    const colors = {
+        'Comum': '⚪',
+        'Incomum': '🟢',
+        'Raro': '🔵',
+        'Épico': '🟣',
+        'Lendário': '🟡',
+        'Mítico': '🔴'
+    };
+    return colors[rarity] || '⚪';
+}
+
+// Formata o nome do item com cor (usando emoji de cor)
+function formatItemName(item) {
+    const colorEmoji = getRarityColor(item.rarity);
+    return `${colorEmoji} *${item.name}* (${item.rarity})`;
 }
 
 // Monta o texto do menu principal com barras de HP e XP
@@ -153,7 +172,7 @@ bot.action('combat_attack', async (ctx) => {
                 if (Math.random() < 0.3) {
                     const item = generateItem(player.level);
                     player.inventory.push(item);
-                    dropMsg = `\n📦 *Drop:* ${item.emoji} ${item.name} (${item.rarity})\n` +
+                    dropMsg = `\n📦 *Drop:* ${formatItemName(item)}\n` +
                               `   ⚔️ +${item.atk} | 🛡️ +${item.def} | ✨ +${item.crit} | ❤️ +${item.hp}`;
                 }
                 savePlayer(ctx.from.id, player);
@@ -233,7 +252,8 @@ bot.action('profile', async (ctx) => {
         let equipText = '';
         for (const [slot, item] of Object.entries(player.equipment)) {
             if (item) {
-                equipText += `   ${slotEmojis[slot]} ${item.name} (${item.rarity})\n`;
+                equipText += `   ${slotEmojis[slot]} ${formatItemName(item)}\n`;
+                equipText += `      ⚔️ +${item.atk} | 🛡️ +${item.def} | ✨ +${item.crit} | ❤️ +${item.hp}\n`;
             } else {
                 equipText += `   ${slotEmojis[slot]} Vazio\n`;
             }
@@ -245,7 +265,7 @@ bot.action('profile', async (ctx) => {
             `[${xpBar}] ${Math.floor((player.xp/xpNeeded)*100)}%\n` +
             `❤️ HP: ${player.hp}/${player.maxHp} [${hpBar}] ${Math.floor((player.hp/player.maxHp)*100)}%\n\n` +
             `⚔️ ATK: ${player.atk} | 🛡️ DEF: ${player.def}\n` +
-            `✨ CRIT: ${player.crit}% | ⚡ AGI: ${player.agi}\n\n` +
+            `✨ CRIT: ${player.crit}%\n\n` +
             `💰 Ouro: ${formatNumber(player.gold)} | 💎 Runas: ${player.runas} | 🏅 Glórias: ${player.glorias}\n` +
             `⚡ Energia: ${player.energy}/${player.maxEnergy}\n` +
             `🗺️ Mapa: ${map.name} (Lv ${map.level})\n\n` +
@@ -258,7 +278,7 @@ bot.action('profile', async (ctx) => {
     }
 });
 
-// ========== INVENTÁRIO SIMPLES ==========
+// ========== INVENTÁRIO COM BOTÕES EQUIPAR ==========
 bot.action('inventory', async (ctx) => {
     try {
         const player = getPlayerSafe(ctx.from.id);
@@ -267,42 +287,111 @@ bot.action('inventory', async (ctx) => {
                 { parse_mode: 'Markdown', ...mainMenu() });
         }
 
-        let text = `🎒 *Inventário* (${player.inventory.length}/${player.maxInventory})\n\n`;
-        player.inventory.forEach((item) => {
-            text += `${item.emoji} *${item.name}* (${item.rarity})\n`;
-            text += `   ⚔️ +${item.atk} | 🛡️ +${item.def} | ✨ +${item.crit} | ❤️ +${item.hp}\n`;
-            text += `   /equip_${item.id}\n\n`;
-        });
-        text += `Use /equip_<id> para equipar. Ex: /equip_${player.inventory[0]?.id}`;
+        // Limita a 10 itens por página (evita mensagem muito longa)
+        const itemsPerPage = 5;
+        const totalPages = Math.ceil(player.inventory.length / itemsPerPage);
+        let page = parseInt(ctx.session?.invPage) || 1;
+        if (isNaN(page)) page = 1;
+        if (page < 1) page = 1;
+        if (page > totalPages) page = totalPages;
 
-        const keyboard = [[Markup.button.callback('◀️ Voltar', 'menu')]];
-        await ctx.editMessageText(text, { parse_mode: 'Markdown', ...Markup.inlineKeyboard(keyboard) });
+        const start = (page - 1) * itemsPerPage;
+        const itemsToShow = player.inventory.slice(start, start + itemsPerPage);
+
+        let text = `🎒 *Inventário* (${player.inventory.length}/${player.maxInventory})\n`;
+        if (totalPages > 1) {
+            text += `Página ${page} de ${totalPages}\n`;
+        }
+        text += `\n`;
+
+        // Monta teclado com botões de equipar
+        const keyboard = [];
+        itemsToShow.forEach((item) => {
+            text += `${getRarityColor(item.rarity)} *${item.name}* (${item.rarity})\n`;
+            text += `   ⚔️ +${item.atk} | 🛡️ +${item.def} | ✨ +${item.crit} | ❤️ +${item.hp}\n`;
+            // Adiciona botão de equipar para cada item
+            keyboard.push([Markup.button.callback(`⚔️ Equipar ${item.name}`, `equip_item_${item.id}`)]);
+            text += `\n`;
+        });
+
+        // Botões de paginação
+        const navButtons = [];
+        if (page > 1) {
+            navButtons.push(Markup.button.callback('◀️ Anterior', 'inv_prev'));
+        }
+        if (page < totalPages) {
+            navButtons.push(Markup.button.callback('Próximo ▶️', 'inv_next'));
+        }
+        if (navButtons.length > 0) {
+            keyboard.push(navButtons);
+        }
+        keyboard.push([Markup.button.callback('◀️ Voltar ao Menu', 'menu')]);
+
+        // Guarda a página atual na sessão (usando um Map simples)
+        if (!ctx.session) ctx.session = {};
+        ctx.session.invPage = page;
+
+        await ctx.editMessageText(text, { 
+            parse_mode: 'Markdown', 
+            ...Markup.inlineKeyboard(keyboard) 
+        });
     } catch (err) {
         console.error('Erro no inventário:', err);
         await ctx.answerCbQuery('Erro ao carregar inventário.');
     }
 });
 
-// Comando para equipar
-bot.command(/^equip_(\d+)/, async (ctx) => {
+// Navegação do inventário
+bot.action('inv_prev', async (ctx) => {
+    if (!ctx.session) ctx.session = {};
+    let page = ctx.session.invPage || 1;
+    if (page > 1) page--;
+    ctx.session.invPage = page;
+    await ctx.answerCbQuery();
+    await bot.actions.inventory(ctx);
+});
+
+bot.action('inv_next', async (ctx) => {
+    if (!ctx.session) ctx.session = {};
+    let page = ctx.session.invPage || 1;
+    const player = getPlayerSafe(ctx.from.id);
+    const totalPages = Math.ceil(player.inventory.length / 5);
+    if (page < totalPages) page++;
+    ctx.session.invPage = page;
+    await ctx.answerCbQuery();
+    await bot.actions.inventory(ctx);
+});
+
+// Ação de equipar via botão
+bot.action(/^equip_item_(.+)$/, async (ctx) => {
     try {
-        const itemId = ctx.match[1];
+        const itemId = parseFloat(ctx.match[1]);
         const player = getPlayer(ctx.from.id);
         const item = player.inventory.find(i => i.id == itemId);
-        if (!item) return ctx.reply('Item não encontrado.');
+        if (!item) {
+            await ctx.answerCbQuery('Item não encontrado!');
+            return;
+        }
 
+        // Desequipa item atual se existir
         const current = player.equipment[item.slot];
         if (current) {
             player.inventory.push(current);
         }
+        
+        // Equipa novo item
         player.equipment[item.slot] = item;
         player.inventory = player.inventory.filter(i => i.id != itemId);
         recalculateStats(player);
         savePlayer(ctx.from.id, player);
-        ctx.reply(`✅ *Equipado:* ${item.name}`, { parse_mode: 'Markdown' });
+        
+        await ctx.answerCbQuery(`✅ ${item.name} equipado!`);
+        
+        // Atualiza o inventário para mostrar a lista atualizada
+        await bot.actions.inventory(ctx);
     } catch (err) {
         console.error('Erro ao equipar:', err);
-        ctx.reply('Erro ao equipar item.');
+        await ctx.answerCbQuery('Erro ao equipar item.');
     }
 });
 
