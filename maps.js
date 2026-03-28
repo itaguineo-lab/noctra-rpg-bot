@@ -22,11 +22,31 @@ const maps = [
             { name: "Ghoul Pantanoso", hp: 230, atk: 25, def: 12, exp: 70, gold: 45, minLevel: 15 },
             { name: "Cobra Venenosa", hp: 180, atk: 28, def: 10, exp: 65, gold: 40, minLevel: 15 }
         ]
+    },
+    {
+        name: "Deserto Incandescente",
+        level: 24,
+        enemies: [
+            { name: "Escorpião de Fogo", hp: 380, atk: 32, def: 15, exp: 100, gold: 70, minLevel: 24 },
+            { name: "Djinn", hp: 300, atk: 35, def: 12, exp: 110, gold: 80, minLevel: 24 }
+        ]
+    },
+    {
+        name: "Montanhas Gélidas",
+        level: 35,
+        enemies: [
+            { name: "Gigante de Gelo", hp: 500, atk: 40, def: 20, exp: 150, gold: 100, minLevel: 35 },
+            { name: "Yeti", hp: 450, atk: 38, def: 18, exp: 140, gold: 95, minLevel: 35 }
+        ]
     }
 ];
 
 function getMap(player) {
     return maps.find(m => player.level >= m.level) || maps[0];
+}
+
+function getMapByName(name) {
+    return maps.find(m => m.name === name);
 }
 
 function getRandomEnemy(player) {
@@ -36,4 +56,4 @@ function getRandomEnemy(player) {
     return available[Math.floor(Math.random() * available.length)];
 }
 
-module.exports = { getMap, getRandomEnemy, maps };
+module.exports = { getMap, getMapByName, getRandomEnemy, maps };
