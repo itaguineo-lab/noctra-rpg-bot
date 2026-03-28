@@ -1,6 +1,5 @@
 const players = {};
 
-// Atributos base de cada classe no nível 1
 const baseStats = {
     warrior: { hp: 120, atk: 18, def: 20, crit: 2 },
     archer:  { hp: 100, atk: 22, def: 15, crit: 7 },
@@ -10,33 +9,24 @@ const baseStats = {
 function getPlayer(id, className = 'archer') {
     if (!players[id]) {
         players[id] = {
-            // Identificação
             id: id,
             name: null,
             class: className,
             vip: false,
             vipExpires: null,
-            
-            // Progressão
             level: 1,
             xp: 0,
             gold: 0,
-            runas: 0,
+            nox: 0,           // <-- moeda VIP (antes era runas)
             glorias: 0,
-            
-            // Energia
             energy: 20,
             maxEnergy: 20,
             lastEnergy: Date.now(),
-            
-            // Atributos
             hp: baseStats[className].hp,
             maxHp: baseStats[className].hp,
             atk: baseStats[className].atk,
             def: baseStats[className].def,
             crit: baseStats[className].crit,
-            
-            // Equipamentos
             equipment: {
                 weapon: null,
                 armor: null,
@@ -46,20 +36,12 @@ function getPlayer(id, className = 'archer') {
                 necklace: null,
                 bag: null
             },
-            
-            // Almas (2 slots)
             souls: [null, null],
             soulsCooldown: {},
-            
-            // Inventário
             inventory: [],
             maxInventory: 20,
-            
-            // Skins
             skin: null,
             skins: [],
-            
-            // Consumíveis
             consumables: {
                 potionHp: 0,
                 potionEnergy: 0,
@@ -67,16 +49,10 @@ function getPlayer(id, className = 'archer') {
                 tonicDefense: 0,
                 tonicPrecision: 0
             },
-            
-            // Chaves de Masmorra
             keys: 0,
             keyLastDaily: null,
-            
-            // Renomear/Mudar Classe (1ª vez grátis)
             renamed: false,
             classChanged: false,
-            
-            // Mapa atual
             currentMap: "Clareira Sombria"
         };
     }
@@ -94,7 +70,6 @@ function recalculateStats(player) {
     let totalDef = base.def + (player.level - 1);
     let totalCrit = base.crit + (player.level - 1) * 0.5;
 
-    // Bônus de equipamentos
     for (const slot in player.equipment) {
         const item = player.equipment[slot];
         if (item) {
@@ -108,7 +83,6 @@ function recalculateStats(player) {
         }
     }
 
-    // Bônus de skins (cosméticos podem dar bônus pequenos)
     if (player.skin && player.skin.bonus) {
         totalAtk += player.skin.bonus.atk || 0;
         totalDef += player.skin.bonus.def || 0;
