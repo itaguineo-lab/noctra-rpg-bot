@@ -1,8 +1,10 @@
 const raridades = [
-    { name: "Comum", emoji: "⚪", chance: 50, mult: 1.0, price: 10 },
+    { name: "Comum", emoji: "⚪", chance: 45, mult: 1.0, price: 10 },
     { name: "Incomum", emoji: "🟢", chance: 30, mult: 1.2, price: 20 },
     { name: "Raro", emoji: "🔵", chance: 15, mult: 1.5, price: 40 },
-    { name: "Épico", emoji: "🟣", chance: 5, mult: 2.0, price: 80 }
+    { name: "Épico", emoji: "🟣", chance: 7, mult: 2.0, price: 80 },
+    { name: "Lendário", emoji: "🟡", chance: 2.5, mult: 2.5, price: 150 },
+    { name: "Mítico", emoji: "🔴", chance: 0.5, mult: 3.0, price: 300 }
 ];
 
 const itemTypes = [
