@@ -176,6 +176,25 @@ bot.action('menu', async (ctx) => {
     '🌑 NOCTRA RPG\n\nEscolha uma ação:',
     mainMenu()
   );
+
+bot.action(/item_(.+)/, async (ctx) => {
+  await ctx.answerCbQuery();
+
+  const index = ctx.match[1];
+  const player = getPlayer(ctx.from.id);
+  const item = player.inventory[index];
+
+  if (!item) return;
+
+  ctx.editMessageText(
+    `${item.emoji} ${item.name}\n\n⚔️ ATK: +${item.atk}\n💰 Valor: ${item.price}`,
+    Markup.inlineKeyboard([
+      [Markup.button.callback('⚔️ Equipar', `equip_${index}`)],
+      [Markup.button.callback('💰 Vender', `sell_${index}`)],
+      [Markup.button.callback('⬅️ Voltar', 'inventory')]
+    ])
+  );
+});
 });
 
 bot.launch();
