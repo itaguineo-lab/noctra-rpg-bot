@@ -69,7 +69,7 @@ function playerAttack(state) {
 }
 
 function playerFlee(state) {
-    const chance = 0.5;
+    const chance = 1.0;
     if (Math.random() < chance) {
         state.ended = true;
         state.winner = 'fled';
