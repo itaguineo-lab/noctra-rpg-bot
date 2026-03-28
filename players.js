@@ -12,7 +12,7 @@ function getPlayer(id, className = 'archer') {
         players[id] = {
             // Identificação
             id: id,
-            name: null,          // será definido depois
+            name: null,
             class: className,
             vip: false,
             vipExpires: null,
@@ -84,9 +84,9 @@ function recalculateStats(player) {
             totalDef += item.def || 0;
             totalCrit += item.crit || 0;
             totalHp += item.hp || 0;
-            // Mochila aumenta capacidade, não combate
-            if (slot === 'bag') {
-                player.maxInventory = 20 + (item.extraSlots || 0);
+            // Mochila aumenta capacidade
+            if (slot === 'bag' && item.extraSlots) {
+                player.maxInventory = 20 + item.extraSlots;
             }
         }
     }
