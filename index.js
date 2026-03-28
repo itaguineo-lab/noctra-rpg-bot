@@ -93,6 +93,195 @@ function combatMenu() {
     ]);
 }
 
+// Adicione no início com os outros imports
+const { dropSoul, formatSoulName, getRarityEmoji } = require('./souls');
+const { canUseSoul, useSoul } = require('./combat');
+
+// Adicione o menu de almas
+function soulsMenu(fight) {
+    const buttons = [];
+    for (const soul of fight.player.souls) {
+        if (soul) {
+            const canUse = canUseSoul(fight, soul);
+            const status = canUse ? '🟢' : '⏳';
+            buttons.push([Markup.button.callback(`${status} ${soul.name}`, `use_soul_${soul.id}`)]);
+        }
+    }
+    buttons.push([Markup.button.callback('◀️ Voltar', 'combat_back')]);
+    return Markup.inlineKeyboard(buttons);
+}
+
+// Ação de usar alma
+bot.action(/^use_soul_(.+)$/, async (ctx) => {
+    try {
+        const soulId = ctx.match[1];
+        const fight = activeFights.get(ctx.from.id);
+        if (!fight || fight.ended) {
+            const player = getPlayerSafe(ctx.from.id);
+            return ctx.editMessageText(getMainMenuText(player), { parse_mode: 'Markdown', ...mainMenu() });
+        }
+        
+        const soul = fight.player.souls.find(s => s && s.id === soulId);
+        if (!soul) {
+            await ctx.answerCbQuery('Alma não encontrada!');
+            return;
+        }
+        
+        const result = useSoul(fight, soul);
+        
+        if (result.ended) {
+            activeFights.delete(ctx.from.id);
+            if (fight.winner === 'player') {
+                const player = getPlayer(ctx.from.id);
+                const enemy = fight.enemy;
+                player.xp += enemy.exp;
+                player.gold += enemy.gold;
+                const levelUp = checkLevelUp(player);
+                player.hp = fight.player.hp;
+                recalculateStats(player);
+                
+                let reward = `\n✅ *Vitória!*\n💰 +${enemy.gold} ouro\n✨ +${enemy.exp} XP`;
+                if (levelUp) reward += `\n🎉 *UP! Agora nível ${player.level}!* 🎉`;
+                
+                // Drop de itens
+                let dropMsg = '';
+                if (Math.random() < 0.3) {
+                    const item = generateItem(player.level);
+                    player.inventory.push(item);
+                    dropMsg = `\n📦 *Drop:* ${formatItemName(item)}\n   ⚔️ +${item.atk} | 🛡️ +${item.def} | ✨ +${item.crit} | ❤️ +${item.hp}`;
+                }
+                
+                // Drop de alma
+                let soulDropMsg = '';
+                const droppedSoul = dropSoul(player.level, player.level);
+                if (droppedSoul) {
+                    player.inventory.push(droppedSoul);
+                    soulDropMsg = `\n💀 *Alma Dropada:* ${formatSoulName(droppedSoul)}\n   ${droppedSoul.description}`;
+                }
+                
+                savePlayer(ctx.from.id, player);
+                await ctx.editMessageText(result.message + reward + dropMsg + soulDropMsg + '\n\n' + getMainMenuText(player), 
+                    { parse_mode: 'Markdown', ...mainMenu() });
+            } else {
+                const player = getPlayer(ctx.from.id);
+                player.hp = Math.floor(player.maxHp * 0.5);
+                savePlayer(ctx.from.id, player);
+                await ctx.editMessageText(result.message + `\n💀 *Você foi derrotado!*` + '\n\n' + getMainMenuText(player), 
+                    { parse_mode: 'Markdown', ...mainMenu() });
+            }
+        } else {
+            const msg = result.message + `\n\n❤️ Seu HP: ${fight.player.hp}/${fight.player.maxHp}\n` +
+                        `🐺 HP inimigo: ${fight.enemy.hp}/${fight.enemy.maxHp}\n\n` +
+                        `Escolha sua próxima ação:`;
+            await ctx.editMessageText(msg, combatMenu());
+        }
+    } catch (err) {
+        console.error('Erro ao usar alma:', err);
+        await ctx.answerCbQuery('Erro ao usar alma.');
+    }
+});
+
+// Ação de abrir menu de almas no combate
+bot.action('combat_souls', async (ctx) => {
+    const fight = activeFights.get(ctx.from.id);
+    if (!fight || fight.ended) {
+        const player = getPlayerSafe(ctx.from.id);
+        return ctx.editMessageText(getMainMenuText(player), { parse_mode: 'Markdown', ...mainMenu() });
+    }
+    
+    let text = `💀 *ALMAS EQUIPADAS*\n\n`;
+    text += `❤️ Seu HP: ${fight.player.hp}/${fight.player.maxHp}\n`;
+    text += `🐺 HP inimigo: ${fight.enemy.hp}/${fight.enemy.maxHp}\n`;
+    text += `⚡ Turno: ${fight.turn + 1}\n\n`;
+    text += `🟢 = Disponível | ⏳ = Já usada\n\n`;
+    
+    for (const soul of fight.player.souls) {
+        if (soul) {
+            const canUse = canUseSoul(fight, soul);
+            const status = canUse ? '🟢 Disponível' : '⏳ Em recarga';
+            text += `${getRarityEmoji(soul.rarity)} *${soul.name}* (${soul.rarity})\n`;
+            text += `   ${soul.description}\n`;
+            text += `   ${status}\n\n`;
+        }
+    }
+    
+    if (fight.player.souls.filter(s => s !== null).length === 0) {
+        text += `Nenhuma alma equipada.\n`;
+        text += `Equipe almas no inventário para usar habilidades especiais!\n`;
+    }
+    
+    await ctx.editMessageText(text, soulsMenu(fight));
+});
+
+// Ação de voltar do menu de almas para o combate
+bot.action('combat_back', async (ctx) => {
+    const fight = activeFights.get(ctx.from.id);
+    if (!fight || fight.ended) {
+        const player = getPlayerSafe(ctx.from.id);
+        return ctx.editMessageText(getMainMenuText(player), { parse_mode: 'Markdown', ...mainMenu() });
+    }
+    
+    const msg = `❤️ Seu HP: ${fight.player.hp}/${fight.player.maxHp}\n` +
+                `🐺 HP inimigo: ${fight.enemy.hp}/${fight.enemy.maxHp}\n\n` +
+                `Escolha sua ação:`;
+    await ctx.editMessageText(msg, combatMenu());
+});
+
+// Modifique o perfil para mostrar almas equipadas
+bot.action('profile', async (ctx) => {
+    try {
+        const player = getPlayerSafe(ctx.from.id);
+        const xpNeeded = xpToNext(player.level);
+        const xpBar = progressBar(player.xp, xpNeeded);
+        const hpBar = progressBar(player.hp, player.maxHp);
+        const map = getMap(player);
+        
+        const slotEmojis = {
+            weapon: '⚔️', armor: '🛡️', helmet: '⛑️', boots: '👢',
+            ring: '💍', necklace: '📿', bag: '🎒'
+        };
+        let equipText = '';
+        for (const [slot, item] of Object.entries(player.equipment)) {
+            if (item) {
+                equipText += `   ${slotEmojis[slot]} ${formatItemName(item)}\n`;
+                equipText += `      ⚔️ +${item.atk} | 🛡️ +${item.def} | ✨ +${item.crit} | ❤️ +${item.hp}\n`;
+            } else {
+                equipText += `   ${slotEmojis[slot]} Vazio\n`;
+            }
+        }
+        
+        // Mostrar almas equipadas
+        let soulsText = '';
+        for (let i = 0; i < player.souls.length; i++) {
+            const soul = player.souls[i];
+            if (soul) {
+                soulsText += `   ${getRarityEmoji(soul.rarity)} ${soul.name} (${soul.rarity})\n`;
+                soulsText += `      ${soul.description}\n`;
+            } else {
+                soulsText += `   ⬜ Slot ${i+1} vazio\n`;
+            }
+        }
+        
+        const profileMsg =
+            `👤 *${ctx.from.first_name}* (${player.class.charAt(0).toUpperCase() + player.class.slice(1)})\n` +
+            `Nível ${player.level} | XP: ${formatNumber(player.xp)} / ${formatNumber(xpNeeded)}\n` +
+            `[${xpBar}] ${Math.floor((player.xp/xpNeeded)*100)}%\n` +
+            `❤️ HP: ${player.hp}/${player.maxHp} [${hpBar}] ${Math.floor((player.hp/player.maxHp)*100)}%\n\n` +
+            `⚔️ ATK: ${player.atk} | 🛡️ DEF: ${player.def}\n` +
+            `✨ CRIT: ${player.crit}%\n\n` +
+            `💰 Ouro: ${formatNumber(player.gold)} | 💎 Runas: ${player.runas} | 🏅 Glórias: ${player.glorias}\n` +
+            `⚡ Energia: ${player.energy}/${player.maxEnergy}\n` +
+            `🗺️ Mapa: ${map.name} (Lv ${map.level})\n\n` +
+            `*Equipamentos:*\n${equipText}\n\n` +
+            `💀 *Almas Equipadas (${player.souls.filter(s => s !== null).length}/2):*\n${soulsText}`;
+        
+        await ctx.editMessageText(profileMsg, { parse_mode: 'Markdown', ...mainMenu() });
+    } catch (err) {
+        console.error('Erro no perfil:', err);
+        await ctx.answerCbQuery('Erro ao carregar perfil.');
+    }
+});
+
 // ========== COMANDOS ==========
 bot.start(async (ctx) => {
     const player = getPlayerUpdated(ctx.from.id);
