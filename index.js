@@ -20,15 +20,44 @@ app.get('/', (req, res) => res.send('Nocta Online!'));
 app.listen(process.env.PORT || 3000);
 
 // ========== MENUS ==========
+// ... imports existentes ...
+
+// Função para gerar o teclado do menu principal
 function mainMenu() {
     return Markup.inlineKeyboard([
         [Markup.button.callback('⚔️ Caçar', 'hunt')],
+        [Markup.button.callback('🗺️ Viajar', 'travel')],
         [Markup.button.callback('🎒 Inventário', 'inventory')],
         [Markup.button.callback('👤 Perfil', 'profile')],
+        [Markup.button.callback('🛒 Loja', 'shop')],
+        [Markup.button.callback('🏛️ Masmorra', 'dungeon')],
+        [Markup.button.callback('🏆 Arena', 'arena')],
+        [Markup.button.callback('🤝 Guilda', 'guild')],
         [Markup.button.callback('⚡ Energia', 'energy')],
-        [Markup.button.callback('🌍 Viajar', 'travel')]  // futuramente
+        [Markup.button.callback('💎 VIP', 'vip')]
     ]);
 }
+
+// Callbacks básicos (por enquanto apenas mostram mensagens de "em breve")
+bot.action('travel', async (ctx) => {
+    await ctx.answerCbQuery('🚧 Em breve!');
+    // Aqui chamaremos o sistema de viagem depois
+});
+bot.action('shop', async (ctx) => {
+    await ctx.answerCbQuery('🚧 Em breve!');
+});
+bot.action('dungeon', async (ctx) => {
+    await ctx.answerCbQuery('🚧 Em breve!');
+});
+bot.action('arena', async (ctx) => {
+    await ctx.answerCbQuery('🚧 Em breve!');
+});
+bot.action('guild', async (ctx) => {
+    await ctx.answerCbQuery('🚧 Em breve!');
+});
+bot.action('vip', async (ctx) => {
+    await ctx.answerCbQuery('🚧 Em breve!');
+});
 
 function combatMenu() {
     return Markup.inlineKeyboard([
