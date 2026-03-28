@@ -13,7 +13,6 @@ function calculateCritDamage(baseDamage, critChance, critBonus = 0) {
 }
 
 function startCombat(player, enemy) {
-    // Copiamos os atributos atuais para o estado de combate
     return {
         player: {
             hp: player.hp,
@@ -21,8 +20,7 @@ function startCombat(player, enemy) {
             atk: player.atk,
             def: player.def,
             crit: player.crit,
-            agi: player.agi,
-            critBonus: 0 // será aumentado por almas
+            critBonus: 0
         },
         enemy: {
             ...enemy,
@@ -41,7 +39,6 @@ function startCombat(player, enemy) {
 }
 
 function playerAttack(state) {
-    // Jogador ataca
     const baseDamage = calculateDamage(state.player.atk, state.enemy.def);
     const { damage, isCrit } = calculateCritDamage(baseDamage, state.player.crit, state.player.critBonus);
     state.enemy.hp -= damage;
@@ -53,7 +50,6 @@ function playerAttack(state) {
         return { message, ended: true, winner: 'player' };
     }
 
-    // Inimigo contra-ataca
     const enemyBaseDamage = calculateDamage(state.enemy.atk, state.player.def);
     const enemyDamage = Math.floor(enemyBaseDamage);
     state.player.hp -= enemyDamage;
@@ -69,7 +65,7 @@ function playerAttack(state) {
 }
 
 function playerFlee(state) {
-    const chance = 1.0;
+    const chance = 0.5;
     if (Math.random() < chance) {
         state.ended = true;
         state.winner = 'fled';
