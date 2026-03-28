@@ -32,7 +32,24 @@ bot.start((ctx) => {
 
 bot.action('hunt', async (ctx) => {
   await ctx.answerCbQuery();
-  ctx.reply('⚔️ Você encontrou um inimigo!');
+
+  const player = getPlayer(ctx.from.id);
+
+  updateEnergy(player);
+
+  if (!useEnergy(player)) {
+    return ctx.reply('❌ Sem energia! Aguarde regenerar.');
+  }
+
+  const result = fight(player);
+
+  if (result.result === 'win') {
+    ctx.reply(
+      `⚔️ Você derrotou ${result.enemy}!\n\n💰 +${result.gold} gold\n✨ +${result.xp} XP`
+    );
+  } else {
+    ctx.reply(`💀 Você foi derrotado por ${result.enemy}`);
+  }
 });
 
 bot.action('explore', async (ctx) => {
@@ -42,7 +59,13 @@ bot.action('explore', async (ctx) => {
 
 bot.action('status', async (ctx) => {
   await ctx.answerCbQuery();
-  ctx.reply('👤 HP: 100 | ATK: 10 | DEF: 5');
+
+  const player = getPlayer(ctx.from.id);
+  updateEnergy(player);
+
+  ctx.reply(
+    `👤 STATUS\n\n❤️ HP: ${player.hp}/${player.maxHp}\n⚔️ ATK: ${player.atk}\n🛡️ DEF: ${player.def}\n\n⚡ Energia: ${player.energy}/20\n💰 Gold: ${player.gold}\n✨ XP: ${player.xp}`
+  );
 });
 
 bot.launch();
