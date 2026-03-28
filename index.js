@@ -1,3 +1,6 @@
+
+const { checkLevelUp, xpToNext } = require('./level');
+const { progressBar } = require('./utils');
 const { getPlayer } = require('./players');
 const { updateEnergy, useEnergy } = require('./energy');
 const { fight } = require('./combat');
