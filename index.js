@@ -6,19 +6,21 @@ const { updateEnergy, useEnergy } = require('./energy');
 const { fight } = require('./combat');
 const { checkLevelUp, xpToNext } = require('./level');
 const { progressBar } = require('./utils');
+const { generateItem } = require('./items');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// servidor (Render)
+// servidor
 const app = express();
 app.get('/', (req, res) => res.send('NOCTRA ONLINE'));
 app.listen(process.env.PORT || 3000);
 
-// ================= MENU =================
+// MENU
 
 function mainMenu() {
   return Markup.inlineKeyboard([
     [Markup.button.callback('⚔️ Caçar', 'hunt')],
+    [Markup.button.callback('🎒 Inventário', 'inventory')],
     [Markup.button.callback('👤 Status', 'status')]
   ]);
 }
@@ -27,7 +29,7 @@ bot.start((ctx) => {
   ctx.reply('🌑 NOCTRA RPG\n\nEscolha uma ação:', mainMenu());
 });
 
-// ================= CAÇAR =================
+// CAÇAR
 
 bot.action('hunt', async (ctx) => {
   await ctx.answerCbQuery();
@@ -37,10 +39,8 @@ bot.action('hunt', async (ctx) => {
 
   if (!useEnergy(player)) {
     return ctx.editMessageText(
-      '❌ Sem energia!\n\nAguarde regenerar.',
-      Markup.inlineKeyboard([
-        [Markup.button.callback('🏠 Menu', 'menu')]
-      ])
+      '❌ Sem energia!',
+      Markup.inlineKeyboard([[Markup.button.callback('🏠 Menu', 'menu')]])
     );
   }
 
@@ -52,7 +52,17 @@ bot.action('hunt', async (ctx) => {
 
   if (result.result === 'win') {
     msg += `🏆 Vitória contra ${result.enemy}\n\n`;
-    msg += `✨ +${result.xp} XP\n💰 +${result.gold} Gold\n\n`;
+    msg += `✨ +${result.xp} XP\n💰 +${result.gold} Gold\n`;
+
+    if (Math.random() < 0.5) {
+      const item = generateItem(player.level);
+      player.inventory.push(item);
+
+      msg += `\n🎁 Item encontrado!\n`;
+      msg += `${item.emoji} ${item.name} (+${item.atk} ATK)\n`;
+    }
+
+    msg += `\n`;
   } else {
     msg += `💀 Derrota para ${result.enemy}\n\n`;
   }
@@ -72,12 +82,58 @@ bot.action('hunt', async (ctx) => {
     msg,
     Markup.inlineKeyboard([
       [Markup.button.callback('⚔️ Caçar novamente', 'hunt')],
+      [Markup.button.callback('🎒 Inventário', 'inventory')],
       [Markup.button.callback('🏠 Menu', 'menu')]
     ])
   );
 });
 
-// ================= STATUS =================
+// INVENTÁRIO
+
+bot.action('inventory', async (ctx) => {
+  await ctx.answerCbQuery();
+
+  const player = getPlayer(ctx.from.id);
+
+  if (player.inventory.length === 0) {
+    return ctx.editMessageText(
+      '🎒 Inventário vazio',
+      Markup.inlineKeyboard([[Markup.button.callback('🏠 Menu', 'menu')]])
+    );
+  }
+
+  let buttons = player.inventory.map((item, i) => [
+    Markup.button.callback(
+      `${item.emoji} ${item.name} (+${item.atk})`,
+      `equip_${i}`
+    )
+  ]);
+
+  buttons.push([Markup.button.callback('🏠 Menu', 'menu')]);
+
+  ctx.editMessageText('🎒 Inventário:', Markup.inlineKeyboard(buttons));
+});
+
+// EQUIPAR
+
+bot.action(/equip_(.+)/, async (ctx) => {
+  await ctx.answerCbQuery();
+
+  const index = ctx.match[1];
+  const player = getPlayer(ctx.from.id);
+
+  const item = player.inventory[index];
+  if (!item) return;
+
+  player.weapon = item;
+
+  ctx.editMessageText(
+    `⚔️ Equipado:\n\n${item.emoji} ${item.name}\n+${item.atk} ATK`,
+    Markup.inlineKeyboard([[Markup.button.callback('🏠 Menu', 'menu')]])
+  );
+});
+
+// STATUS
 
 bot.action('status', async (ctx) => {
   await ctx.answerCbQuery();
@@ -87,27 +143,25 @@ bot.action('status', async (ctx) => {
 
   const xpMax = xpToNext(player.level);
 
-  const msg =
+  ctx.editMessageText(
     `👤 PERSONAGEM\n\n` +
     `📊 Level: ${player.level}\n` +
     progressBar(player.xp, xpMax) + `\n` +
     `${player.xp}/${xpMax} XP\n\n` +
     `❤️ HP: ${player.hp}/${player.maxHp}\n` +
-    `⚔️ ATK: ${player.atk}\n` +
+    `⚔️ ATK: ${player.atk + (player.weapon ? player.weapon.atk : 0)}\n` +
     `🛡️ DEF: ${player.def}\n\n` +
     `⚡ Energia: ${player.energy}/20\n` +
-    `💰 Gold: ${player.gold}`;
-
-  ctx.editMessageText(
-    msg,
+    `💰 Gold: ${player.gold}`,
     Markup.inlineKeyboard([
       [Markup.button.callback('⚔️ Caçar', 'hunt')],
+      [Markup.button.callback('🎒 Inventário', 'inventory')],
       [Markup.button.callback('🏠 Menu', 'menu')]
     ])
   );
 });
 
-// ================= MENU =================
+// MENU
 
 bot.action('menu', async (ctx) => {
   await ctx.answerCbQuery();
