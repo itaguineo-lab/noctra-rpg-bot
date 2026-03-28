@@ -94,10 +94,22 @@ function getMainMenuText(player, username = null) {
         `🎉 EVENTOS: ${eventText}\n` +
         `${vipText}` +
         `🗝️ Chaves: ${player.keys}\n` +
-        `💎 Runas: ${player.runas}\n` +
+        `💎 Nox: ${player.nox || 0}\n` +
         `💰 Gold: ${formatNumber(player.gold)}\n` +
         `🗺️ Mapa: ${getMap(player).name} (Lv ${getMap(player).level})`
     );
+}
+
+// ========== MENUS ==========
+function mainMenu() {
+    return Markup.inlineKeyboard([
+        [Markup.button.callback('⚔️ Caçar', 'hunt'), Markup.button.callback('🗺️ Viajar', 'travel')],
+        [Markup.button.callback('🎒 Inventário', 'inventory'), Markup.button.callback('👤 Perfil', 'profile')],
+        [Markup.button.callback('🛒 Loja', 'shop'), Markup.button.callback('🏛️ Masmorra', 'dungeon')],
+        [Markup.button.callback('🏆 Arena', 'arena'), Markup.button.callback('🤝 Guilda', 'guild')],
+        [Markup.button.callback('⚡ Energia', 'energy'), Markup.button.callback('💎 VIP', 'vip')],
+        [Markup.button.callback('👥 Online', 'online')]
+    ]);
 }
 
 function combatMenu() {
@@ -135,12 +147,9 @@ function soulsMenu(fight) {
 
 function inventoryCategoryMenu() {
     return Markup.inlineKeyboard([
-        [Markup.button.callback('⚔️ Armas', 'inv_weapons')],
-        [Markup.button.callback('🛡️ Armaduras', 'inv_armors')],
-        [Markup.button.callback('💍 Joias', 'inv_jewelry')],
-        [Markup.button.callback('🧪 Consumíveis', 'inv_consumables')],
-        [Markup.button.callback('💀 Almas', 'inv_souls')],
-        [Markup.button.callback('🎨 Skins', 'inv_skins')],
+        [Markup.button.callback('⚔️ Armas', 'inv_weapons'), Markup.button.callback('🛡️ Armaduras', 'inv_armors')],
+        [Markup.button.callback('💍 Joias', 'inv_jewelry'), Markup.button.callback('🧪 Consumíveis', 'inv_consumables')],
+        [Markup.button.callback('💀 Almas', 'inv_souls'), Markup.button.callback('🎨 Skins', 'inv_skins')],
         [Markup.button.callback('◀️ Voltar', 'menu')]
     ]);
 }
@@ -172,14 +181,14 @@ bot.command('class', async (ctx) => {
         savePlayer(ctx.from.id, player);
         ctx.reply(`✅ Classe alterada para ${className.charAt(0).toUpperCase() + className.slice(1)}! (1ª vez grátis)`);
     } else {
-        if (player.runas >= 500) {
-            player.runas -= 500;
+        if (player.nox >= 500) {
+            player.nox -= 500;
             player.class = className;
             recalculateStats(player);
             savePlayer(ctx.from.id, player);
-            ctx.reply(`✅ Classe alterada para ${className.charAt(0).toUpperCase() + className.slice(1)}! (-500 Runas)`);
+            ctx.reply(`✅ Classe alterada para ${className.charAt(0).toUpperCase() + className.slice(1)}! (-500 Nox)`);
         } else {
-            ctx.reply(`❌ Runas insuficientes! Mudar classe custa 500 Runas.`);
+            ctx.reply(`❌ Nox insuficientes! Mudar classe custa 500 Nox.`);
         }
     }
 });
@@ -196,13 +205,13 @@ bot.command('rename', async (ctx) => {
         savePlayer(ctx.from.id, player);
         ctx.reply(`✅ Nome alterado para "${newName}"! (1ª vez grátis)`);
     } else {
-        if (player.runas >= 100) {
-            player.runas -= 100;
+        if (player.nox >= 100) {
+            player.nox -= 100;
             player.name = newName;
             savePlayer(ctx.from.id, player);
-            ctx.reply(`✅ Nome alterado para "${newName}"! (-100 Runas)`);
+            ctx.reply(`✅ Nome alterado para "${newName}"! (-100 Nox)`);
         } else {
-            ctx.reply(`❌ Runas insuficientes! Renomear custa 100 Runas.`);
+            ctx.reply(`❌ Nox insuficientes! Renomear custa 100 Nox.`);
         }
     }
 });
@@ -341,11 +350,11 @@ bot.action('combat_items', async (ctx) => {
     
     const player = getPlayer(ctx.from.id);
     let text = `🧪 *CONSUMÍVEIS*\n\n`;
-    text += `💚 Poção de Vida: ${player.consumables.potionHp} (cura 50 HP)\n`;
-    text += `🔋 Poção de Energia: ${player.consumables.potionEnergy} (restaura 15 energia)\n`;
-    text += `💪 Tônico de Força: ${player.consumables.tonicStrength} (+20% ATK por 3 turnos)\n`;
-    text += `🛡️ Tônico de Defesa: ${player.consumables.tonicDefense} (+20% DEF por 3 turnos)\n`;
-    text += `🎯 Tônico de Precisão: ${player.consumables.tonicPrecision} (+15% CRIT por 3 turnos)\n\n`;
+    text += `💚 Poção de Vida: ${player.consumables?.potionHp || 0} (cura 50 HP)\n`;
+    text += `🔋 Poção de Energia: ${player.consumables?.potionEnergy || 0} (restaura 15 energia)\n`;
+    text += `💪 Tônico de Força: ${player.consumables?.tonicStrength || 0} (+20% ATK por 3 turnos)\n`;
+    text += `🛡️ Tônico de Defesa: ${player.consumables?.tonicDefense || 0} (+20% DEF por 3 turnos)\n`;
+    text += `🎯 Tônico de Precisão: ${player.consumables?.tonicPrecision || 0} (+15% CRIT por 3 turnos)\n\n`;
     text += `❤️ Seu HP: ${fight.player.hp}/${fight.player.maxHp}\n`;
     text += `🐺 HP inimigo: ${fight.enemy.hp}/${fight.enemy.maxHp}\n\n`;
     text += `Usar um consumível gasta o turno.`;
@@ -472,8 +481,8 @@ bot.action('profile', async (ctx) => {
     try {
         const player = getPlayerSafe(ctx.from.id);
         const xpNeeded = xpToNext(player.level);
-        const xpBar = progressBar(player.xp, xpNeeded);
-        const hpBar = progressBar(player.hp, player.maxHp);
+        const xpBar = progressBar(player.xp, xpNeeded, 8);
+        const hpBar = progressBar(player.hp, player.maxHp, 8);
         const map = getMap(player);
         
         const slotEmojis = {
@@ -510,7 +519,7 @@ bot.action('profile', async (ctx) => {
             `❤️ HP: ${player.hp}/${player.maxHp} [${hpBar}] ${Math.floor((player.hp/player.maxHp)*100)}%\n\n` +
             `⚔️ ATK: ${player.atk} | 🛡️ DEF: ${player.def}\n` +
             `✨ CRIT: ${player.crit}%\n\n` +
-            `💰 Ouro: ${formatNumber(player.gold)} | 💎 Runas: ${player.runas} | 🏅 Glórias: ${player.glorias}\n` +
+            `💰 Gold: ${formatNumber(player.gold)} | 💎 Nox: ${player.nox || 0} | 🏅 Glórias: ${player.glorias || 0}\n` +
             `⚡ Energia: ${player.energy}/${player.maxEnergy}\n` +
             `🗝️ Chaves: ${player.keys}\n` +
             `🗺️ Mapa: ${map.name} (Lv ${map.level})\n\n` +
@@ -591,11 +600,11 @@ bot.action('inv_jewelry', async (ctx) => {
 bot.action('inv_consumables', async (ctx) => {
     const player = getPlayerSafe(ctx.from.id);
     let text = `🧪 *CONSUMÍVEIS*\n\n`;
-    text += `💚 Poção de Vida: ${player.consumables.potionHp}\n`;
-    text += `🔋 Poção de Energia: ${player.consumables.potionEnergy}\n`;
-    text += `💪 Tônico de Força: ${player.consumables.tonicStrength}\n`;
-    text += `🛡️ Tônico de Defesa: ${player.consumables.tonicDefense}\n`;
-    text += `🎯 Tônico de Precisão: ${player.consumables.tonicPrecision}\n`;
+    text += `💚 Poção de Vida: ${player.consumables?.potionHp || 0}\n`;
+    text += `🔋 Poção de Energia: ${player.consumables?.potionEnergy || 0}\n`;
+    text += `💪 Tônico de Força: ${player.consumables?.tonicStrength || 0}\n`;
+    text += `🛡️ Tônico de Defesa: ${player.consumables?.tonicDefense || 0}\n`;
+    text += `🎯 Tônico de Precisão: ${player.consumables?.tonicPrecision || 0}\n`;
     await ctx.editMessageText(text, { parse_mode: 'Markdown', ...inventoryCategoryMenu() });
 });
 
@@ -614,13 +623,15 @@ bot.action('inv_souls', async (ctx) => {
 
 bot.action('inv_skins', async (ctx) => {
     const player = getPlayerSafe(ctx.from.id);
-    let text = `🎨 *SKINS* (${player.skins.length})\n\n`;
-    player.skins.forEach(s => {
-        text += `${s.emoji} ${s.name} (${s.rarity})\n`;
-        text += `   /equip_skin_${s.id}\n\n`;
-    });
+    let text = `🎨 *SKINS* (${player.skins?.length || 0})\n\n`;
+    if (player.skins) {
+        player.skins.forEach(s => {
+            text += `${s.emoji} ${s.name} (${s.rarity})\n`;
+            text += `   /equip_skin_${s.id}\n\n`;
+        });
+    }
     if (player.skin) text += `\n✨ *Equipada:* ${player.skin.emoji} ${player.skin.name}\n`;
-    if (player.skins.length === 0) text += 'Nenhuma skin no inventário.';
+    if (!player.skins || player.skins.length === 0) text += 'Nenhuma skin no inventário.';
     await ctx.editMessageText(text, { parse_mode: 'Markdown', ...inventoryCategoryMenu() });
 });
 
@@ -667,30 +678,6 @@ bot.command(/^equip_soul_(\d+)/, async (ctx) => {
     } catch (err) {
         console.error('Erro ao equipar alma:', err);
         ctx.reply('Erro ao equipar alma.');
-    }
-});
-
-// Comando para desequipar alma
-bot.command(/^unequip_soul_(\d+)/, async (ctx) => {
-    try {
-        const slot = parseInt(ctx.match[1]);
-        const player = getPlayer(ctx.from.id);
-        if (slot < 0 || slot >= player.souls.length) return ctx.reply('Slot inválido.');
-        
-        const soul = player.souls[slot];
-        if (!soul) return ctx.reply('Nenhuma alma neste slot.');
-        
-        if (player.inventory.length >= player.maxInventory) {
-            return ctx.reply('❌ Inventário cheio! Venda ou descarte itens primeiro.');
-        }
-        
-        player.inventory.push(soul);
-        player.souls[slot] = null;
-        savePlayer(ctx.from.id, player);
-        ctx.reply(`🔄 *Alma removida:* ${soul.name}`, { parse_mode: 'Markdown' });
-    } catch (err) {
-        console.error('Erro ao desequipar alma:', err);
-        ctx.reply('Erro ao desequipar alma.');
     }
 });
 
@@ -745,7 +732,7 @@ bot.action('travel_locked', async (ctx) => {
 bot.action('energy', async (ctx) => {
     try {
         const player = getPlayerUpdated(ctx.from.id);
-        const bar = progressBar(player.energy, player.maxEnergy);
+        const bar = progressBar(player.energy, player.maxEnergy, 8);
         await ctx.editMessageText(
             `⚡ *Energia*: ${player.energy}/${player.maxEnergy}\n` +
             `[${bar}] ${Math.floor((player.energy/player.maxEnergy)*100)}%\n\n` +
