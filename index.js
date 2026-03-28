@@ -1,16 +1,18 @@
 const { Telegraf, Markup } = require('telegraf');
 const express = require('express');
 
-const { getPlayer, savePlayer, recalculateStats } = require('./players');
+const { getPlayer, savePlayer, recalculateStats, giveDailyKeys } = require('./players');
 const { updateEnergy, useEnergy } = require('./energy');
-const { getRandomEnemy, getMap, getMapByName } = require('./maps');
-const { startCombat, playerAttack, playerFlee } = require('./combat');
+const { getRandomEnemy, getMap, getMapByName, maps } = require('./maps');
+const { startCombat, playerAttack, playerFlee, canUseSoul, useSoul } = require('./combat');
 const { checkLevelUp, xpToNext } = require('./level');
 const { progressBar, formatNumber } = require('./utils');
 const { generateItem } = require('./items');
+const { dropSoul, formatSoulName, getRarityEmoji } = require('./souls');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const activeFights = new Map();
+const invPages = new Map();
 
 // Servidor para manter o bot acordado
 const app = express();
@@ -31,7 +33,6 @@ function getPlayerSafe(id) {
     return player;
 }
 
-// Cores dos equipamentos por raridade
 function getRarityColor(rarity) {
     const colors = {
         'Comum': '⚪',
@@ -44,46 +45,11 @@ function getRarityColor(rarity) {
     return colors[rarity] || '⚪';
 }
 
-// Formata o nome do item com cor
 function formatItemName(item) {
     const colorEmoji = getRarityColor(item.rarity);
     return `${colorEmoji} *${item.name}*`;
 }
 
-// Monta o texto do menu principal com barras de HP e XP
-// No index.js, modificar getMainMenuText()
-function getMainMenuText(player) {
-    const xpNeeded = xpToNext(player.level);
-    const xpPercent = Math.floor((player.xp / xpNeeded) * 100);
-    const xpBar = progressBar(player.xp, xpNeeded, 10);
-    const hpBar = progressBar(player.hp, player.maxHp, 10);
-    const energyBar = progressBar(player.energy, player.maxEnergy, 10);
-    
-    // Evento sazonal (simulado)
-    const events = getActiveEvents();
-    const eventText = events.length > 0 ? `🎉 EVENTOS: ${events.join(' | ')}\n` : '';
-    
-    // Data VIP
-    const vipText = player.vipExpires ? `✨ VIP até ${new Date(player.vipExpires).toLocaleDateString()}\n` : '';
-    
-    return (
-        `🌙 *Nocta*\n\n` +
-        `👤 ${player.name || ctx.from.first_name} (${player.class})\n` +
-        `Nv. ${player.level} | XP: ${formatNumber(player.xp)} (Faltam: ${formatNumber(xpNeeded - player.xp)})\n` +
-        `[${xpBar}] ${xpPercent}%\n\n` +
-        `❤️ HP: ${player.hp}/${player.maxHp} [${hpBar}] ${Math.floor((player.hp/player.maxHp)*100)}%\n` +
-        `⚡ Energia: ${player.energy}/${player.maxEnergy} [${energyBar}] ${Math.floor((player.energy/player.maxEnergy)*100)}%\n` +
-        `⚔️ ATK ${player.atk} | 🛡️ DEF ${player.def} | ✨ CRIT ${player.crit}%\n\n` +
-        `${eventText}` +
-        `${vipText}` +
-        `🗝️ Chaves: ${player.keys || 0}\n` +
-        `💎 Runas: ${player.runas}\n` +
-        `💰 Gold: ${formatNumber(player.gold)}\n` +
-        `🗺️ Mapa: ${getMap(player).name} (Lv ${getMap(player).level})\n`
-    );
-}
-
-// Eventos sazonais
 function getActiveEvents() {
     const events = [];
     const now = new Date();
@@ -95,9 +61,41 @@ function getActiveEvents() {
     // Páscoa (Mar-Abr)
     if ((month === 2 && day >= 20) || (month === 3 && day <= 10)) events.push('🐣 Páscoa');
     // Lua Cheia (simulado)
-    if (Math.random() < 0.1) events.push('🌕 Lua Cheia');
+    const moonPhase = Math.floor(Math.random() * 8);
+    if (moonPhase === 0) events.push('🌕 Lua Cheia');
     
     return events;
+}
+
+function getMainMenuText(player, username = null) {
+    const xpNeeded = xpToNext(player.level);
+    const xpPercent = Math.floor((player.xp / xpNeeded) * 100);
+    const xpBar = progressBar(player.xp, xpNeeded, 10);
+    const hpBar = progressBar(player.hp, player.maxHp, 10);
+    const energyBar = progressBar(player.energy, player.maxEnergy, 10);
+    
+    const events = getActiveEvents();
+    const eventText = events.length > 0 ? `🎉 EVENTOS: ${events.join(' | ')}\n` : '';
+    
+    const vipText = player.vipExpires ? `✨ VIP até ${new Date(player.vipExpires).toLocaleDateString()}\n` : '';
+    
+    const nameDisplay = player.name || username || 'Aventureiro';
+    
+    return (
+        `🌙 *Nocta*\n\n` +
+        `👤 ${nameDisplay} (${player.class.charAt(0).toUpperCase() + player.class.slice(1)})\n` +
+        `Nv. ${player.level} | XP: ${formatNumber(player.xp)} (Faltam: ${formatNumber(xpNeeded - player.xp)})\n` +
+        `[${xpBar}] ${xpPercent}%\n\n` +
+        `❤️ HP: ${player.hp}/${player.maxHp} [${hpBar}] ${Math.floor((player.hp/player.maxHp)*100)}%\n` +
+        `⚡ Energia: ${player.energy}/${player.maxEnergy} [${energyBar}] ${Math.floor((player.energy/player.maxEnergy)*100)}%\n` +
+        `⚔️ ATK ${player.atk} | 🛡️ DEF ${player.def} | ✨ CRIT ${player.crit}%\n\n` +
+        `${eventText}` +
+        `${vipText}` +
+        `🗝️ Chaves: ${player.keys}\n` +
+        `💎 Runas: ${player.runas}\n` +
+        `💰 Gold: ${formatNumber(player.gold)}\n` +
+        `🗺️ Mapa: ${getMap(player).name} (Lv ${getMap(player).level})\n`
+    );
 }
 
 // ========== MENUS ==========
@@ -112,7 +110,8 @@ function mainMenu() {
         [Markup.button.callback('🏆 Arena', 'arena')],
         [Markup.button.callback('🤝 Guilda', 'guild')],
         [Markup.button.callback('⚡ Energia', 'energy')],
-        [Markup.button.callback('💎 VIP', 'vip')]
+        [Markup.button.callback('💎 VIP', 'vip')],
+        [Markup.button.callback('👥 Online', 'online')]
     ]);
 }
 
@@ -125,11 +124,17 @@ function combatMenu() {
     ]);
 }
 
-// Adicione no início com os outros imports
-const { dropSoul, formatSoulName, getRarityEmoji } = require('./souls');
-const { canUseSoul, useSoul } = require('./combat');
+function consumablesMenu() {
+    return Markup.inlineKeyboard([
+        [Markup.button.callback('💚 Poção de Vida', 'use_potion_hp')],
+        [Markup.button.callback('🔋 Poção de Energia', 'use_potion_energy')],
+        [Markup.button.callback('💪 Tônico de Força', 'use_tonic_strength')],
+        [Markup.button.callback('🛡️ Tônico de Defesa', 'use_tonic_defense')],
+        [Markup.button.callback('🎯 Tônico de Precisão', 'use_tonic_precision')],
+        [Markup.button.callback('◀️ Voltar', 'combat_back')]
+    ]);
+}
 
-// Adicione o menu de almas
 function soulsMenu(fight) {
     const buttons = [];
     for (const soul of fight.player.souls) {
@@ -143,27 +148,123 @@ function soulsMenu(fight) {
     return Markup.inlineKeyboard(buttons);
 }
 
-// Ação de usar alma
-bot.action(/^use_soul_(.+)$/, async (ctx) => {
+function inventoryCategoryMenu() {
+    return Markup.inlineKeyboard([
+        [Markup.button.callback('⚔️ Armas', 'inv_weapons')],
+        [Markup.button.callback('🛡️ Armaduras', 'inv_armors')],
+        [Markup.button.callback('💍 Joias', 'inv_jewelry')],
+        [Markup.button.callback('🧪 Consumíveis', 'inv_consumables')],
+        [Markup.button.callback('💀 Almas', 'inv_souls')],
+        [Markup.button.callback('🎨 Skins', 'inv_skins')],
+        [Markup.button.callback('◀️ Voltar', 'menu')]
+    ]);
+}
+
+// ========== COMANDOS ==========
+bot.start(async (ctx) => {
+    const player = getPlayerUpdated(ctx.from.id);
+    giveDailyKeys(player);
+    savePlayer(ctx.from.id, player);
+    await ctx.reply(
+        getMainMenuText(player, ctx.from.first_name),
+        { parse_mode: 'Markdown', ...mainMenu() }
+    );
+});
+
+bot.command('class', async (ctx) => {
+    const args = ctx.message.text.split(' ');
+    if (args.length < 2) return ctx.reply('Use: /class guerreiro, arqueiro ou mago');
+    const className = args[1].toLowerCase();
+    if (!['guerreiro', 'arqueiro', 'mago'].includes(className)) {
+        return ctx.reply('Classe inválida. Opções: guerreiro, arqueiro, mago');
+    }
+    const player = getPlayer(ctx.from.id);
+    
+    if (!player.classChanged) {
+        player.classChanged = true;
+        player.class = className;
+        recalculateStats(player);
+        savePlayer(ctx.from.id, player);
+        ctx.reply(`✅ Classe alterada para ${className.charAt(0).toUpperCase() + className.slice(1)}! (1ª vez grátis)`);
+    } else {
+        if (player.runas >= 500) {
+            player.runas -= 500;
+            player.class = className;
+            recalculateStats(player);
+            savePlayer(ctx.from.id, player);
+            ctx.reply(`✅ Classe alterada para ${className.charAt(0).toUpperCase() + className.slice(1)}! (-500 Runas)`);
+        } else {
+            ctx.reply(`❌ Runas insuficientes! Mudar classe custa 500 Runas.`);
+        }
+    }
+});
+
+bot.command('rename', async (ctx) => {
+    const args = ctx.message.text.split(' ');
+    if (args.length < 2) return ctx.reply('Use: /rename <novo_nome>');
+    const newName = args.slice(1).join(' ');
+    const player = getPlayer(ctx.from.id);
+    
+    if (!player.renamed) {
+        player.renamed = true;
+        player.name = newName;
+        savePlayer(ctx.from.id, player);
+        ctx.reply(`✅ Nome alterado para "${newName}"! (1ª vez grátis)`);
+    } else {
+        if (player.runas >= 100) {
+            player.runas -= 100;
+            player.name = newName;
+            savePlayer(ctx.from.id, player);
+            ctx.reply(`✅ Nome alterado para "${newName}"! (-100 Runas)`);
+        } else {
+            ctx.reply(`❌ Runas insuficientes! Renomear custa 100 Runas.`);
+        }
+    }
+});
+
+// ========== COMBATE ==========
+bot.action('hunt', async (ctx) => {
     try {
-        const soulId = ctx.match[1];
+        const player = getPlayerUpdated(ctx.from.id);
+        if (!useEnergy(player)) {
+            await ctx.answerCbQuery('⚠️ Energia insuficiente!');
+            return ctx.editMessageText(getMainMenuText(player, ctx.from.first_name), { parse_mode: 'Markdown', ...mainMenu() });
+        }
+        savePlayer(ctx.from.id, player);
+
+        const enemy = getRandomEnemy(player);
+        const combatState = startCombat(player, enemy);
+        activeFights.set(ctx.from.id, combatState);
+
+        const msg = `⚔️ *Combate iniciado!*\n\n` +
+                    `🐺 *${enemy.name}* (Nv. ${enemy.minLevel})\n` +
+                    `❤️ ${enemy.hp} HP | ⚔️ ${enemy.atk} ATK | 🛡️ ${enemy.def} DEF\n\n` +
+                    `❤️ Seu HP: ${player.hp}/${player.maxHp}\n` +
+                    `⚡ Energia: ${player.energy}/${player.maxEnergy}\n` +
+                    `🌀 Turno: 1\n\n` +
+                    `Escolha sua ação:`;
+        await ctx.editMessageText(msg, combatMenu());
+    } catch (err) {
+        console.error('Erro ao caçar:', err);
+        await ctx.reply('Ocorreu um erro. Tente novamente.');
+    }
+});
+
+bot.action('combat_attack', async (ctx) => {
+    try {
         const fight = activeFights.get(ctx.from.id);
         if (!fight || fight.ended) {
             const player = getPlayerSafe(ctx.from.id);
-            return ctx.editMessageText(getMainMenuText(player), { parse_mode: 'Markdown', ...mainMenu() });
+            return ctx.editMessageText(getMainMenuText(player, ctx.from.first_name), { parse_mode: 'Markdown', ...mainMenu() });
         }
         
-        const soul = fight.player.souls.find(s => s && s.id === soulId);
-        if (!soul) {
-            await ctx.answerCbQuery('Alma não encontrada!');
-            return;
-        }
-        
-        const result = useSoul(fight, soul);
-        
+        fight.turn++;
+        const result = playerAttack(fight);
+        let response = result.message + `\n🌀 Turno: ${fight.turn + 1}`;
+
         if (result.ended) {
             activeFights.delete(ctx.from.id);
-            if (fight.winner === 'player') {
+            if (result.winner === 'player') {
                 const player = getPlayer(ctx.from.id);
                 const enemy = fight.enemy;
                 player.xp += enemy.exp;
@@ -171,60 +272,113 @@ bot.action(/^use_soul_(.+)$/, async (ctx) => {
                 const levelUp = checkLevelUp(player);
                 player.hp = fight.player.hp;
                 recalculateStats(player);
-                
+
                 let reward = `\n✅ *Vitória!*\n💰 +${enemy.gold} ouro\n✨ +${enemy.exp} XP`;
                 if (levelUp) reward += `\n🎉 *UP! Agora nível ${player.level}!* 🎉`;
-                
-                // Drop de itens
+
                 let dropMsg = '';
                 if (Math.random() < 0.3) {
                     const item = generateItem(player.level);
                     player.inventory.push(item);
                     dropMsg = `\n📦 *Drop:* ${formatItemName(item)}\n   ⚔️ +${item.atk} | 🛡️ +${item.def} | ✨ +${item.crit} | ❤️ +${item.hp}`;
                 }
-                
-                // Drop de alma
+
                 let soulDropMsg = '';
                 const droppedSoul = dropSoul(player.level, player.level);
                 if (droppedSoul) {
                     player.inventory.push(droppedSoul);
                     soulDropMsg = `\n💀 *Alma Dropada:* ${formatSoulName(droppedSoul)}\n   ${droppedSoul.description}`;
                 }
-                
+
                 savePlayer(ctx.from.id, player);
-                await ctx.editMessageText(result.message + reward + dropMsg + soulDropMsg + '\n\n' + getMainMenuText(player), 
+                await ctx.editMessageText(response + reward + dropMsg + soulDropMsg + '\n\n' + getMainMenuText(player, ctx.from.first_name), 
                     { parse_mode: 'Markdown', ...mainMenu() });
-            } else {
+            } else if (result.winner === 'enemy') {
                 const player = getPlayer(ctx.from.id);
                 player.hp = Math.floor(player.maxHp * 0.5);
                 savePlayer(ctx.from.id, player);
-                await ctx.editMessageText(result.message + `\n💀 *Você foi derrotado!*` + '\n\n' + getMainMenuText(player), 
+                await ctx.editMessageText(response + `\n💀 *Você foi derrotado!* Seu HP foi reduzido a ${player.hp}/${player.maxHp}.` + '\n\n' + getMainMenuText(player, ctx.from.first_name), 
                     { parse_mode: 'Markdown', ...mainMenu() });
             }
         } else {
-            const msg = result.message + `\n\n❤️ Seu HP: ${fight.player.hp}/${fight.player.maxHp}\n` +
+            const msg = response + `\n\n❤️ Seu HP: ${fight.player.hp}/${fight.player.maxHp}\n` +
                         `🐺 HP inimigo: ${fight.enemy.hp}/${fight.enemy.maxHp}\n\n` +
                         `Escolha sua próxima ação:`;
             await ctx.editMessageText(msg, combatMenu());
         }
     } catch (err) {
-        console.error('Erro ao usar alma:', err);
-        await ctx.answerCbQuery('Erro ao usar alma.');
+        console.error('Erro no ataque:', err);
+        await ctx.answerCbQuery('Erro interno. Tente novamente.');
     }
 });
 
-// Ação de abrir menu de almas no combate
+bot.action('combat_flee', async (ctx) => {
+    try {
+        const fight = activeFights.get(ctx.from.id);
+        if (!fight) {
+            const player = getPlayerSafe(ctx.from.id);
+            return ctx.editMessageText(getMainMenuText(player, ctx.from.first_name), { parse_mode: 'Markdown', ...mainMenu() });
+        }
+
+        const result = playerFlee(fight);
+        activeFights.delete(ctx.from.id);
+        
+        if (result.success) {
+            const player = getPlayerSafe(ctx.from.id);
+            await ctx.editMessageText(result.message + '\n\n' + getMainMenuText(player, ctx.from.first_name), 
+                { parse_mode: 'Markdown', ...mainMenu() });
+        } else {
+            const player = getPlayer(ctx.from.id);
+            player.hp = fight.player.hp;
+            if (player.hp <= 0) {
+                player.hp = Math.floor(player.maxHp * 0.5);
+                savePlayer(ctx.from.id, player);
+                await ctx.editMessageText(result.message + `\n💀 Você foi derrotado!` + '\n\n' + getMainMenuText(player, ctx.from.first_name), 
+                    { parse_mode: 'Markdown', ...mainMenu() });
+            } else {
+                savePlayer(ctx.from.id, player);
+                await ctx.editMessageText(result.message + '\n\n' + getMainMenuText(player, ctx.from.first_name), 
+                    { parse_mode: 'Markdown', ...mainMenu() });
+            }
+        }
+    } catch (err) {
+        console.error('Erro ao fugir:', err);
+        await ctx.answerCbQuery('Erro interno. Tente novamente.');
+    }
+});
+
+bot.action('combat_items', async (ctx) => {
+    const fight = activeFights.get(ctx.from.id);
+    if (!fight || fight.ended) {
+        const player = getPlayerSafe(ctx.from.id);
+        return ctx.editMessageText(getMainMenuText(player, ctx.from.first_name), { parse_mode: 'Markdown', ...mainMenu() });
+    }
+    
+    const player = getPlayer(ctx.from.id);
+    let text = `🧪 *CONSUMÍVEIS*\n\n`;
+    text += `💚 Poção de Vida: ${player.consumables.potionHp} (cura 50 HP)\n`;
+    text += `🔋 Poção de Energia: ${player.consumables.potionEnergy} (restaura 15 energia)\n`;
+    text += `💪 Tônico de Força: ${player.consumables.tonicStrength} (+20% ATK por 3 turnos)\n`;
+    text += `🛡️ Tônico de Defesa: ${player.consumables.tonicDefense} (+20% DEF por 3 turnos)\n`;
+    text += `🎯 Tônico de Precisão: ${player.consumables.tonicPrecision} (+15% CRIT por 3 turnos)\n\n`;
+    text += `❤️ Seu HP: ${fight.player.hp}/${fight.player.maxHp}\n`;
+    text += `🐺 HP inimigo: ${fight.enemy.hp}/${fight.enemy.maxHp}\n\n`;
+    text += `Usar um consumível gasta o turno.`;
+    
+    await ctx.editMessageText(text, consumablesMenu());
+});
+
 bot.action('combat_souls', async (ctx) => {
     const fight = activeFights.get(ctx.from.id);
     if (!fight || fight.ended) {
         const player = getPlayerSafe(ctx.from.id);
-        return ctx.editMessageText(getMainMenuText(player), { parse_mode: 'Markdown', ...mainMenu() });
+        return ctx.editMessageText(getMainMenuText(player, ctx.from.first_name), { parse_mode: 'Markdown', ...mainMenu() });
     }
     
     let text = `💀 *ALMAS EQUIPADAS*\n\n`;
     text += `❤️ Seu HP: ${fight.player.hp}/${fight.player.maxHp}\n`;
     text += `🐺 HP inimigo: ${fight.enemy.hp}/${fight.enemy.maxHp}\n`;
-    text += `⚡ Turno: ${fight.turn + 1}\n\n`;
+    text += `🌀 Turno: ${fight.turn + 1}\n\n`;
     text += `🟢 = Disponível | ⏳ = Já usada\n\n`;
     
     for (const soul of fight.player.souls) {
@@ -245,139 +399,41 @@ bot.action('combat_souls', async (ctx) => {
     await ctx.editMessageText(text, soulsMenu(fight));
 });
 
-// Ação de voltar do menu de almas para o combate
 bot.action('combat_back', async (ctx) => {
     const fight = activeFights.get(ctx.from.id);
     if (!fight || fight.ended) {
         const player = getPlayerSafe(ctx.from.id);
-        return ctx.editMessageText(getMainMenuText(player), { parse_mode: 'Markdown', ...mainMenu() });
+        return ctx.editMessageText(getMainMenuText(player, ctx.from.first_name), { parse_mode: 'Markdown', ...mainMenu() });
     }
     
     const msg = `❤️ Seu HP: ${fight.player.hp}/${fight.player.maxHp}\n` +
-                `🐺 HP inimigo: ${fight.enemy.hp}/${fight.enemy.maxHp}\n\n` +
+                `🐺 HP inimigo: ${fight.enemy.hp}/${fight.enemy.maxHp}\n` +
+                `🌀 Turno: ${fight.turn + 1}\n\n` +
                 `Escolha sua ação:`;
     await ctx.editMessageText(msg, combatMenu());
 });
 
-// Modifique o perfil para mostrar almas equipadas
-bot.action('profile', async (ctx) => {
+bot.action(/^use_soul_(.+)$/, async (ctx) => {
     try {
-        const player = getPlayerSafe(ctx.from.id);
-        const xpNeeded = xpToNext(player.level);
-        const xpBar = progressBar(player.xp, xpNeeded);
-        const hpBar = progressBar(player.hp, player.maxHp);
-        const map = getMap(player);
-        
-        const slotEmojis = {
-            weapon: '⚔️', armor: '🛡️', helmet: '⛑️', boots: '👢',
-            ring: '💍', necklace: '📿', bag: '🎒'
-        };
-        let equipText = '';
-        for (const [slot, item] of Object.entries(player.equipment)) {
-            if (item) {
-                equipText += `   ${slotEmojis[slot]} ${formatItemName(item)}\n`;
-                equipText += `      ⚔️ +${item.atk} | 🛡️ +${item.def} | ✨ +${item.crit} | ❤️ +${item.hp}\n`;
-            } else {
-                equipText += `   ${slotEmojis[slot]} Vazio\n`;
-            }
-        }
-        
-        // Mostrar almas equipadas
-        let soulsText = '';
-        for (let i = 0; i < player.souls.length; i++) {
-            const soul = player.souls[i];
-            if (soul) {
-                soulsText += `   ${getRarityEmoji(soul.rarity)} ${soul.name} (${soul.rarity})\n`;
-                soulsText += `      ${soul.description}\n`;
-            } else {
-                soulsText += `   ⬜ Slot ${i+1} vazio\n`;
-            }
-        }
-        
-        const profileMsg =
-            `👤 *${ctx.from.first_name}* (${player.class.charAt(0).toUpperCase() + player.class.slice(1)})\n` +
-            `Nível ${player.level} | XP: ${formatNumber(player.xp)} / ${formatNumber(xpNeeded)}\n` +
-            `[${xpBar}] ${Math.floor((player.xp/xpNeeded)*100)}%\n` +
-            `❤️ HP: ${player.hp}/${player.maxHp} [${hpBar}] ${Math.floor((player.hp/player.maxHp)*100)}%\n\n` +
-            `⚔️ ATK: ${player.atk} | 🛡️ DEF: ${player.def}\n` +
-            `✨ CRIT: ${player.crit}%\n\n` +
-            `💰 Ouro: ${formatNumber(player.gold)} | 💎 Runas: ${player.runas} | 🏅 Glórias: ${player.glorias}\n` +
-            `⚡ Energia: ${player.energy}/${player.maxEnergy}\n` +
-            `🗺️ Mapa: ${map.name} (Lv ${map.level})\n\n` +
-            `*Equipamentos:*\n${equipText}\n\n` +
-            `💀 *Almas Equipadas (${player.souls.filter(s => s !== null).length}/2):*\n${soulsText}`;
-        
-        await ctx.editMessageText(profileMsg, { parse_mode: 'Markdown', ...mainMenu() });
-    } catch (err) {
-        console.error('Erro no perfil:', err);
-        await ctx.answerCbQuery('Erro ao carregar perfil.');
-    }
-});
-
-// ========== COMANDOS ==========
-bot.start(async (ctx) => {
-    const player = getPlayerUpdated(ctx.from.id);
-    await ctx.reply(
-        getMainMenuText(player),
-        { parse_mode: 'Markdown', ...mainMenu() }
-    );
-});
-
-bot.command('class', async (ctx) => {
-    const args = ctx.message.text.split(' ');
-    if (args.length < 2) return ctx.reply('Use: /class guerreiro, arqueiro ou mago');
-    const className = args[1].toLowerCase();
-    if (!['guerreiro', 'arqueiro', 'mago'].includes(className)) {
-        return ctx.reply('Classe inválida. Opções: guerreiro, arqueiro, mago');
-    }
-    const player = getPlayer(ctx.from.id);
-    player.class = className;
-    recalculateStats(player);
-    savePlayer(ctx.from.id, player);
-    ctx.reply(`✅ Classe alterada para ${className.charAt(0).toUpperCase() + className.slice(1)}!`);
-});
-
-// ========== CAÇAR E COMBATE ==========
-bot.action('hunt', async (ctx) => {
-    try {
-        const player = getPlayerUpdated(ctx.from.id);
-        if (!useEnergy(player)) {
-            await ctx.answerCbQuery('⚠️ Energia insuficiente!');
-            return ctx.editMessageText(getMainMenuText(player), { parse_mode: 'Markdown', ...mainMenu() });
-        }
-        savePlayer(ctx.from.id, player);
-
-        const enemy = getRandomEnemy(player);
-        const combatState = startCombat(player, enemy);
-        activeFights.set(ctx.from.id, combatState);
-
-        const msg = `⚔️ *Combate iniciado!*\n\n` +
-                    `🐺 *${enemy.name}* (Nv. ${enemy.minLevel})\n` +
-                    `❤️ ${enemy.hp} HP | ⚔️ ${enemy.atk} ATK | 🛡️ ${enemy.def} DEF\n\n` +
-                    `❤️ Seu HP: ${player.hp}/${player.maxHp}\n` +
-                    `⚡ Energia: ${player.energy}/${player.maxEnergy}\n\n` +
-                    `Escolha sua ação:`;
-        await ctx.editMessageText(msg, combatMenu());
-    } catch (err) {
-        console.error('Erro ao caçar:', err);
-        await ctx.reply('Ocorreu um erro. Tente novamente.');
-    }
-});
-
-bot.action('combat_attack', async (ctx) => {
-    try {
+        const soulId = ctx.match[1];
         const fight = activeFights.get(ctx.from.id);
         if (!fight || fight.ended) {
             const player = getPlayerSafe(ctx.from.id);
-            return ctx.editMessageText(getMainMenuText(player), { parse_mode: 'Markdown', ...mainMenu() });
+            return ctx.editMessageText(getMainMenuText(player, ctx.from.first_name), { parse_mode: 'Markdown', ...mainMenu() });
         }
-
-        const result = playerAttack(fight);
-        let response = result.message;
-
+        
+        const soul = fight.player.souls.find(s => s && s.id === soulId);
+        if (!soul) {
+            await ctx.answerCbQuery('Alma não encontrada!');
+            return;
+        }
+        
+        fight.turn++;
+        const result = useSoul(fight, soul);
+        
         if (result.ended) {
             activeFights.delete(ctx.from.id);
-            if (result.winner === 'player') {
+            if (fight.winner === 'player') {
                 const player = getPlayer(ctx.from.id);
                 const enemy = fight.enemy;
                 player.xp += enemy.exp;
@@ -385,76 +441,44 @@ bot.action('combat_attack', async (ctx) => {
                 const levelUp = checkLevelUp(player);
                 player.hp = fight.player.hp;
                 recalculateStats(player);
-
+                
                 let reward = `\n✅ *Vitória!*\n💰 +${enemy.gold} ouro\n✨ +${enemy.exp} XP`;
                 if (levelUp) reward += `\n🎉 *UP! Agora nível ${player.level}!* 🎉`;
-
+                
                 let dropMsg = '';
                 if (Math.random() < 0.3) {
                     const item = generateItem(player.level);
                     player.inventory.push(item);
-                    dropMsg = `\n📦 *Drop:* ${formatItemName(item)}\n` +
-                              `   ⚔️ +${item.atk} | 🛡️ +${item.def} | ✨ +${item.crit} | ❤️ +${item.hp}`;
+                    dropMsg = `\n📦 *Drop:* ${formatItemName(item)}\n   ⚔️ +${item.atk} | 🛡️ +${item.def} | ✨ +${item.crit} | ❤️ +${item.hp}`;
                 }
+                
+                let soulDropMsg = '';
+                const droppedSoul = dropSoul(player.level, player.level);
+                if (droppedSoul) {
+                    player.inventory.push(droppedSoul);
+                    soulDropMsg = `\n💀 *Alma Dropada:* ${formatSoulName(droppedSoul)}\n   ${droppedSoul.description}`;
+                }
+                
                 savePlayer(ctx.from.id, player);
-
-                await ctx.editMessageText(response + reward + dropMsg + '\n\n' + getMainMenuText(player), 
+                await ctx.editMessageText(result.message + reward + dropMsg + soulDropMsg + '\n\n' + getMainMenuText(player, ctx.from.first_name), 
                     { parse_mode: 'Markdown', ...mainMenu() });
-            } else if (result.winner === 'enemy') {
+            } else {
                 const player = getPlayer(ctx.from.id);
                 player.hp = Math.floor(player.maxHp * 0.5);
                 savePlayer(ctx.from.id, player);
-                await ctx.editMessageText(response + `\n💀 *Você foi derrotado!* Seu HP foi reduzido a ${player.hp}/${player.maxHp}.` + '\n\n' + getMainMenuText(player), 
+                await ctx.editMessageText(result.message + `\n💀 *Você foi derrotado!*` + '\n\n' + getMainMenuText(player, ctx.from.first_name), 
                     { parse_mode: 'Markdown', ...mainMenu() });
             }
         } else {
-            const msg = response + `\n\n❤️ Seu HP: ${fight.player.hp}/${fight.player.maxHp}\n` +
-                        `🐺 HP inimigo: ${fight.enemy.hp}/${fight.enemy.maxHp}\n\n` +
+            const msg = result.message + `\n\n❤️ Seu HP: ${fight.player.hp}/${fight.player.maxHp}\n` +
+                        `🐺 HP inimigo: ${fight.enemy.hp}/${fight.enemy.maxHp}\n` +
+                        `🌀 Turno: ${fight.turn + 1}\n\n` +
                         `Escolha sua próxima ação:`;
             await ctx.editMessageText(msg, combatMenu());
         }
     } catch (err) {
-        console.error('Erro no ataque:', err);
-        await ctx.answerCbQuery('Erro interno. Tente novamente.');
-    }
-});
-
-bot.action('combat_flee', async (ctx) => {
-    try {
-        const fight = activeFights.get(ctx.from.id);
-        if (!fight) {
-            const player = getPlayerSafe(ctx.from.id);
-            return ctx.editMessageText(getMainMenuText(player), { parse_mode: 'Markdown', ...mainMenu() });
-        }
-
-        const result = playerFlee(fight);
-        
-        // SEMPRE sair do combate, independente do resultado
-        activeFights.delete(ctx.from.id);
-        
-        if (result.success) {
-            // Fuga bem sucedida
-            const player = getPlayerSafe(ctx.from.id);
-            await ctx.editMessageText(result.message + '\n\n' + getMainMenuText(player), 
-                { parse_mode: 'Markdown', ...mainMenu() });
-        } else {
-            // Fuga falhou, mas ainda sai do combate
-            const player = getPlayer(ctx.from.id);
-            player.hp = fight.player.hp; // atualiza HP do jogador com o dano da fuga
-            if (player.hp <= 0) {
-                player.hp = Math.floor(player.maxHp * 0.5);
-                savePlayer(ctx.from.id, player);
-                await ctx.editMessageText(result.message + `\n💀 Você foi derrotado!` + '\n\n' + getMainMenuText(player), 
-                    { parse_mode: 'Markdown', ...mainMenu() });
-            } else {
-                savePlayer(ctx.from.id, player);
-                await ctx.editMessageText(result.message + '\n\n' + getMainMenuText(player), 
-                    { parse_mode: 'Markdown', ...mainMenu() });
-            }
-        }
-    } catch (err) {
-        console.error('Erro ao fugir:', err);
-        await ctx.answerCbQuery('Erro interno. Tente novamente.');
+        console.error('Erro ao usar alma:', err);
+        await ctx.answerCbQuery('Erro ao usar alma.');
     }
 });
 
@@ -466,7 +490,7 @@ bot.action('profile', async (ctx) => {
         const xpBar = progressBar(player.xp, xpNeeded);
         const hpBar = progressBar(player.hp, player.maxHp);
         const map = getMap(player);
-
+        
         const slotEmojis = {
             weapon: '⚔️', armor: '🛡️', helmet: '⛑️', boots: '👢',
             ring: '💍', necklace: '📿', bag: '🎒'
@@ -480,9 +504,22 @@ bot.action('profile', async (ctx) => {
                 equipText += `   ${slotEmojis[slot]} Vazio\n`;
             }
         }
-
+        
+        let soulsText = '';
+        for (let i = 0; i < player.souls.length; i++) {
+            const soul = player.souls[i];
+            if (soul) {
+                soulsText += `   ${getRarityEmoji(soul.rarity)} ${soul.name} (${soul.rarity})\n`;
+                soulsText += `      ${soul.description}\n`;
+            } else {
+                soulsText += `   ⬜ Slot ${i+1} vazio\n`;
+            }
+        }
+        
+        const skinText = player.skin ? `🎨 Skin: ${player.skin.emoji} ${player.skin.name}\n` : '🎨 Skin: Nenhuma\n';
+        
         const profileMsg =
-            `👤 *${ctx.from.first_name}* (${player.class.charAt(0).toUpperCase() + player.class.slice(1)})\n` +
+            `👤 *${player.name || ctx.from.first_name}* (${player.class.charAt(0).toUpperCase() + player.class.slice(1)})\n` +
             `Nível ${player.level} | XP: ${formatNumber(player.xp)} / ${formatNumber(xpNeeded)}\n` +
             `[${xpBar}] ${Math.floor((player.xp/xpNeeded)*100)}%\n` +
             `❤️ HP: ${player.hp}/${player.maxHp} [${hpBar}] ${Math.floor((player.hp/player.maxHp)*100)}%\n\n` +
@@ -490,238 +527,185 @@ bot.action('profile', async (ctx) => {
             `✨ CRIT: ${player.crit}%\n\n` +
             `💰 Ouro: ${formatNumber(player.gold)} | 💎 Runas: ${player.runas} | 🏅 Glórias: ${player.glorias}\n` +
             `⚡ Energia: ${player.energy}/${player.maxEnergy}\n` +
+            `🗝️ Chaves: ${player.keys}\n` +
             `🗺️ Mapa: ${map.name} (Lv ${map.level})\n\n` +
-            `*Equipamentos:*\n${equipText}`;
-
-        await ctx.editMessageText(profileMsg, { parse_mode: 'Markdown', ...mainMenu() });
+            `${skinText}\n` +
+            `*Equipamentos:*\n${equipText}\n` +
+            `💀 *Almas Equipadas (${player.souls.filter(s => s !== null).length}/2):*\n${soulsText}`;
+        
+        const keyboard = [
+            [Markup.button.callback('📝 Renomear', 'rename_action'), Markup.button.callback('🔄 Mudar Classe', 'change_class_action')],
+            [Markup.button.callback('◀️ Voltar', 'menu')]
+        ];
+        
+        await ctx.editMessageText(profileMsg, { parse_mode: 'Markdown', ...Markup.inlineKeyboard(keyboard) });
     } catch (err) {
         console.error('Erro no perfil:', err);
         await ctx.answerCbQuery('Erro ao carregar perfil.');
     }
 });
 
-// ========== INVENTÁRIO COM EQUIPAR E DESEQUIPAR ==========
-// Guarda a página atual do inventário
-const invPages = new Map();
+bot.action('rename_action', async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.reply('Digite seu novo nome usando o comando: /rename <novo_nome>');
+});
 
+bot.action('change_class_action', async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.reply('Escolha sua nova classe:\n/class guerreiro\n/class arqueiro\n/class mago');
+});
+
+// ========== INVENTÁRIO POR CATEGORIAS ==========
 bot.action('inventory', async (ctx) => {
-    try {
-        const player = getPlayerSafe(ctx.from.id);
-        
-        // Mostra itens equipados primeiro
-        let text = `🎒 *INVENTÁRIO* (${player.inventory.length}/${player.maxInventory})\n\n`;
-        
-        // Seção: Itens Equipados
-        text += `⚔️ *EQUIPADOS*\n`;
-        const slotEmojis = {
-            weapon: '⚔️', armor: '🛡️', helmet: '⛑️', boots: '👢',
-            ring: '💍', necklace: '📿', bag: '🎒'
-        };
-        
-        let hasEquipped = false;
-        for (const [slot, item] of Object.entries(player.equipment)) {
-            if (item) {
-                hasEquipped = true;
-                text += `   ${slotEmojis[slot]} ${formatItemName(item)}\n`;
-                text += `      ⚔️ +${item.atk} | 🛡️ +${item.def} | ✨ +${item.crit} | ❤️ +${item.hp}\n`;
-            }
-        }
-        if (!hasEquipped) {
-            text += `   Nenhum item equipado\n`;
-        }
-        
-        // Seção: Itens no Inventário
-        text += `\n📦 *NO INVENTÁRIO*\n`;
-        
-        if (player.inventory.length === 0) {
-            text += `   Nenhum item no inventário\n`;
-        } else {
-            const itemsPerPage = 4;
-            const totalPages = Math.ceil(player.inventory.length / itemsPerPage);
-            let page = invPages.get(ctx.from.id) || 1;
-            if (page < 1) page = 1;
-            if (page > totalPages) page = totalPages;
-            
-            const start = (page - 1) * itemsPerPage;
-            const itemsToShow = player.inventory.slice(start, start + itemsPerPage);
-            
-            if (totalPages > 1) {
-                text += `Página ${page} de ${totalPages}\n`;
-            }
-            
-            itemsToShow.forEach((item) => {
-                text += `\n${getRarityColor(item.rarity)} *${item.name}* (${item.rarity})\n`;
-                text += `   ⚔️ +${item.atk} | 🛡️ +${item.def} | ✨ +${item.crit} | ❤️ +${item.hp}\n`;
-            });
-            
-            // Botões de paginação para o inventário
-            const navButtons = [];
-            if (page > 1) {
-                navButtons.push(Markup.button.callback('◀️ Anterior', 'inv_prev'));
-            }
-            if (page < totalPages) {
-                navButtons.push(Markup.button.callback('Próximo ▶️', 'inv_next'));
-            }
-            
-            invPages.set(ctx.from.id, page);
-            
-            // Montar teclado com botões de equipar para cada item
-            const keyboard = [];
-            
-            // Adiciona botões para cada item da página atual
-            itemsToShow.forEach((item) => {
-                keyboard.push([Markup.button.callback(`⚔️ Equipar ${item.name}`, `equip_item_${item.id}`)]);
-            });
-            
-            // Adiciona botões de paginação
-            if (navButtons.length > 0) {
-                keyboard.push(navButtons);
-            }
-            
-            // Botões para desequipar
-            const unequipButtons = [];
-            for (const [slot, item] of Object.entries(player.equipment)) {
-                if (item) {
-                    const slotName = {
-                        weapon: 'Arma', armor: 'Armadura', helmet: 'Capacete', 
-                        boots: 'Botas', ring: 'Anel', necklace: 'Colar', bag: 'Mochila'
-                    }[slot];
-                    unequipButtons.push(Markup.button.callback(`🔄 Desequipar ${slotName}`, `unequip_${slot}`));
-                }
-            }
-            if (unequipButtons.length > 0) {
-                keyboard.push(unequipButtons);
-            }
-            
-            keyboard.push([Markup.button.callback('◀️ Voltar ao Menu', 'menu')]);
-            
-            await ctx.editMessageText(text, { 
-                parse_mode: 'Markdown', 
-                ...Markup.inlineKeyboard(keyboard) 
-            });
-            return;
-        }
-        
-        // Se não tem itens no inventário, mostra só os equipados
-        const keyboard = [];
-        
-        // Botões para desequipar
-        const unequipButtons = [];
-        for (const [slot, item] of Object.entries(player.equipment)) {
-            if (item) {
-                const slotName = {
-                    weapon: 'Arma', armor: 'Armadura', helmet: 'Capacete', 
-                    boots: 'Botas', ring: 'Anel', necklace: 'Colar', bag: 'Mochila'
-                }[slot];
-                unequipButtons.push(Markup.button.callback(`🔄 Desequipar ${slotName}`, `unequip_${slot}`));
-            }
-        }
-        if (unequipButtons.length > 0) {
-            keyboard.push(unequipButtons);
-        }
-        keyboard.push([Markup.button.callback('◀️ Voltar ao Menu', 'menu')]);
-        
-        await ctx.editMessageText(text, { 
-            parse_mode: 'Markdown', 
-            ...Markup.inlineKeyboard(keyboard) 
-        });
-    } catch (err) {
-        console.error('Erro no inventário:', err);
-        await ctx.answerCbQuery('Erro ao carregar inventário.');
-    }
-});
-
-// Navegação do inventário
-bot.action('inv_prev', async (ctx) => {
-    let page = invPages.get(ctx.from.id) || 1;
-    if (page > 1) page--;
-    invPages.set(ctx.from.id, page);
-    await ctx.answerCbQuery();
-    await bot.actions.inventory(ctx);
-});
-
-bot.action('inv_next', async (ctx) => {
-    let page = invPages.get(ctx.from.id) || 1;
     const player = getPlayerSafe(ctx.from.id);
-    const totalPages = Math.ceil(player.inventory.length / 4);
-    if (page < totalPages) page++;
-    invPages.set(ctx.from.id, page);
-    await ctx.answerCbQuery();
-    await bot.actions.inventory(ctx);
+    let text = `🎒 *INVENTÁRIO*\n\n`;
+    text += `⚔️ ATK ${player.atk} | 🛡️ DEF ${player.def} | ❤️ HP ${player.maxHp} | ✨ CRIT ${player.crit}%\n\n`;
+    text += `Escolha uma categoria:`;
+    await ctx.editMessageText(text, inventoryCategoryMenu());
 });
 
-// Ação de equipar via botão
-bot.action(/^equip_item_(.+)$/, async (ctx) => {
+bot.action('inv_weapons', async (ctx) => {
+    const player = getPlayerSafe(ctx.from.id);
+    const weapons = player.inventory.filter(i => i.slot === 'weapon');
+    let text = `⚔️ *ARMAS* (${weapons.length})\n\n`;
+    weapons.forEach(w => {
+        text += `${getRarityColor(w.rarity)} ${w.name} (${w.rarity})\n`;
+        text += `   ⚔️ +${w.atk} | 🛡️ +${w.def} | ✨ +${w.crit} | ❤️ +${w.hp}\n`;
+        text += `   /equip_${w.id}\n\n`;
+    });
+    if (weapons.length === 0) text += 'Nenhuma arma no inventário.';
+    await ctx.editMessageText(text, { parse_mode: 'Markdown', ...inventoryCategoryMenu() });
+});
+
+bot.action('inv_armors', async (ctx) => {
+    const player = getPlayerSafe(ctx.from.id);
+    const armors = player.inventory.filter(i => ['armor', 'helmet', 'boots'].includes(i.slot));
+    let text = `🛡️ *ARMADURAS* (${armors.length})\n\n`;
+    armors.forEach(a => {
+        text += `${getRarityColor(a.rarity)} ${a.name} (${a.rarity})\n`;
+        text += `   ⚔️ +${a.atk} | 🛡️ +${a.def} | ✨ +${a.crit} | ❤️ +${a.hp}\n`;
+        text += `   /equip_${a.id}\n\n`;
+    });
+    if (armors.length === 0) text += 'Nenhuma armadura no inventário.';
+    await ctx.editMessageText(text, { parse_mode: 'Markdown', ...inventoryCategoryMenu() });
+});
+
+bot.action('inv_jewelry', async (ctx) => {
+    const player = getPlayerSafe(ctx.from.id);
+    const jewelry = player.inventory.filter(i => ['ring', 'necklace'].includes(i.slot));
+    let text = `💍 *JOIAS* (${jewelry.length})\n\n`;
+    jewelry.forEach(j => {
+        text += `${getRarityColor(j.rarity)} ${j.name} (${j.rarity})\n`;
+        text += `   ⚔️ +${j.atk} | 🛡️ +${j.def} | ✨ +${j.crit} | ❤️ +${j.hp}\n`;
+        text += `   /equip_${j.id}\n\n`;
+    });
+    if (jewelry.length === 0) text += 'Nenhuma joia no inventário.';
+    await ctx.editMessageText(text, { parse_mode: 'Markdown', ...inventoryCategoryMenu() });
+});
+
+bot.action('inv_consumables', async (ctx) => {
+    const player = getPlayerSafe(ctx.from.id);
+    let text = `🧪 *CONSUMÍVEIS*\n\n`;
+    text += `💚 Poção de Vida: ${player.consumables.potionHp}\n`;
+    text += `🔋 Poção de Energia: ${player.consumables.potionEnergy}\n`;
+    text += `💪 Tônico de Força: ${player.consumables.tonicStrength}\n`;
+    text += `🛡️ Tônico de Defesa: ${player.consumables.tonicDefense}\n`;
+    text += `🎯 Tônico de Precisão: ${player.consumables.tonicPrecision}\n`;
+    await ctx.editMessageText(text, { parse_mode: 'Markdown', ...inventoryCategoryMenu() });
+});
+
+bot.action('inv_souls', async (ctx) => {
+    const player = getPlayerSafe(ctx.from.id);
+    const souls = player.inventory.filter(i => i.type === 'soul');
+    let text = `💀 *ALMAS* (${souls.length})\n\n`;
+    souls.forEach(s => {
+        text += `${getRarityEmoji(s.rarity)} ${s.name} (${s.rarity})\n`;
+        text += `   ${s.description}\n`;
+        text += `   /equip_soul_${s.id}\n\n`;
+    });
+    if (souls.length === 0) text += 'Nenhuma alma no inventário.';
+    await ctx.editMessageText(text, { parse_mode: 'Markdown', ...inventoryCategoryMenu() });
+});
+
+bot.action('inv_skins', async (ctx) => {
+    const player = getPlayerSafe(ctx.from.id);
+    let text = `🎨 *SKINS* (${player.skins.length})\n\n`;
+    player.skins.forEach(s => {
+        text += `${s.emoji} ${s.name} (${s.rarity})\n`;
+        text += `   /equip_skin_${s.id}\n\n`;
+    });
+    if (player.skin) text += `\n✨ *Equipada:* ${player.skin.emoji} ${player.skin.name}\n`;
+    if (player.skins.length === 0) text += 'Nenhuma skin no inventário.';
+    await ctx.editMessageText(text, { parse_mode: 'Markdown', ...inventoryCategoryMenu() });
+});
+
+// Comando para equipar item
+bot.command(/^equip_(\d+)/, async (ctx) => {
     try {
         const itemId = parseFloat(ctx.match[1]);
         const player = getPlayer(ctx.from.id);
         const item = player.inventory.find(i => i.id == itemId);
-        if (!item) {
-            await ctx.answerCbQuery('Item não encontrado!');
-            return;
-        }
+        if (!item) return ctx.reply('Item não encontrado.');
 
-        // Desequipa item atual se existir
         const current = player.equipment[item.slot];
         if (current) {
             player.inventory.push(current);
         }
-        
-        // Equipa novo item
         player.equipment[item.slot] = item;
         player.inventory = player.inventory.filter(i => i.id != itemId);
         recalculateStats(player);
         savePlayer(ctx.from.id, player);
-        
-        await ctx.answerCbQuery(`✅ ${item.name} equipado!`);
-        
-        // Reseta a página do inventário
-        invPages.delete(ctx.from.id);
-        
-        // Atualiza o inventário
-        await bot.actions.inventory(ctx);
+        ctx.reply(`✅ *Equipado:* ${item.name}`, { parse_mode: 'Markdown' });
     } catch (err) {
         console.error('Erro ao equipar:', err);
-        await ctx.answerCbQuery('Erro ao equipar item.');
+        ctx.reply('Erro ao equipar item.');
     }
 });
 
-// Ação de desequipar via botão
-bot.action(/^unequip_(.+)$/, async (ctx) => {
+// Comando para equipar alma
+bot.command(/^equip_soul_(\d+)/, async (ctx) => {
     try {
-        const slot = ctx.match[1];
+        const soulId = parseFloat(ctx.match[1]);
         const player = getPlayer(ctx.from.id);
-        const item = player.equipment[slot];
+        const soul = player.inventory.find(i => i.id == soulId && i.type === 'soul');
+        if (!soul) return ctx.reply('Alma não encontrada.');
         
-        if (!item) {
-            await ctx.answerCbQuery('Nada equipado neste slot!');
-            return;
+        const emptySlot = player.souls.findIndex(s => s === null);
+        if (emptySlot === -1) {
+            return ctx.reply('❌ Você já tem 2 almas equipadas! Desequipe uma primeiro.');
         }
         
-        // Verifica espaço no inventário
-        if (player.inventory.length >= player.maxInventory) {
-            await ctx.answerCbQuery('❌ Inventário cheio! Venda ou descarte itens primeiro.');
-            return;
-        }
-        
-        // Move para o inventário
-        player.inventory.push(item);
-        player.equipment[slot] = null;
-        recalculateStats(player);
+        player.souls[emptySlot] = soul;
+        player.inventory = player.inventory.filter(i => i.id != soulId);
         savePlayer(ctx.from.id, player);
-        
-        const slotName = {
-            weapon: 'Arma', armor: 'Armadura', helmet: 'Capacete', 
-            boots: 'Botas', ring: 'Anel', necklace: 'Colar', bag: 'Mochila'
-        }[slot];
-        
-        await ctx.answerCbQuery(`🔄 ${item.name} removido!`);
-        
-        // Atualiza o inventário
-        await bot.actions.inventory(ctx);
+        ctx.reply(`✅ *Alma equipada:* ${soul.name}`, { parse_mode: 'Markdown' });
     } catch (err) {
-        console.error('Erro ao desequipar:', err);
-        await ctx.answerCbQuery('Erro ao desequipar item.');
+        console.error('Erro ao equipar alma:', err);
+        ctx.reply('Erro ao equipar alma.');
+    }
+});
+
+// Comando para desequipar alma
+bot.command(/^unequip_soul_(\d+)/, async (ctx) => {
+    try {
+        const slot = parseInt(ctx.match[1]);
+        const player = getPlayer(ctx.from.id);
+        if (slot < 0 || slot >= player.souls.length) return ctx.reply('Slot inválido.');
+        
+        const soul = player.souls[slot];
+        if (!soul) return ctx.reply('Nenhuma alma neste slot.');
+        
+        if (player.inventory.length >= player.maxInventory) {
+            return ctx.reply('❌ Inventário cheio! Venda ou descarte itens primeiro.');
+        }
+        
+        player.inventory.push(soul);
+        player.souls[slot] = null;
+        savePlayer(ctx.from.id, player);
+        ctx.reply(`🔄 *Alma removida:* ${soul.name}`, { parse_mode: 'Markdown' });
+    } catch (err) {
+        console.error('Erro ao desequipar alma:', err);
+        ctx.reply('Erro ao desequipar alma.');
     }
 });
 
@@ -729,7 +713,6 @@ bot.action(/^unequip_(.+)$/, async (ctx) => {
 bot.action('travel', async (ctx) => {
     try {
         const player = getPlayerUpdated(ctx.from.id);
-        const { maps } = require('./maps');
         let text = `🗺️ *Escolha seu destino:*\n\n`;
         const keyboard = [];
         for (const map of maps) {
@@ -755,7 +738,6 @@ bot.action(/^travel_to_(.+)$/, async (ctx) => {
     try {
         const mapName = ctx.match[1];
         const player = getPlayer(ctx.from.id);
-        const { getMapByName } = require('./maps');
         const map = getMapByName(mapName);
         if (!map) return ctx.answerCbQuery('Mapa inválido!');
         if (player.level < map.level) {
@@ -783,7 +765,7 @@ bot.action('energy', async (ctx) => {
             `⚡ *Energia*: ${player.energy}/${player.maxEnergy}\n` +
             `[${bar}] ${Math.floor((player.energy/player.maxEnergy)*100)}%\n\n` +
             `Regeneração: ${player.vip ? '1 a cada 3 min' : '1 a cada 6 min'}\n` +
-            `Compre poções de energia na loja.` + '\n\n' + getMainMenuText(player),
+            `Compre poções de energia na loja.` + '\n\n' + getMainMenuText(player, ctx.from.first_name),
             { parse_mode: 'Markdown', ...mainMenu() }
         );
     } catch (err) {
@@ -792,8 +774,16 @@ bot.action('energy', async (ctx) => {
     }
 });
 
+// ========== ONLINE ==========
+bot.action('online', async (ctx) => {
+    const onlineCount = Object.keys(activeFights).length + Math.floor(Math.random() * 100);
+    const playersOnline = Math.max(1, onlineCount);
+    await ctx.answerCbQuery(`👥 ${playersOnline} jogadores online!`, true);
+});
+
 // ========== EM BREVE ==========
-['shop', 'dungeon', 'arena', 'guild', 'vip', 'combat_items', 'combat_souls'].forEach(action => {
+['shop', 'dungeon', 'arena', 'guild', 'vip', 'use_potion_hp', 'use_potion_energy', 
+ 'use_tonic_strength', 'use_tonic_defense', 'use_tonic_precision'].forEach(action => {
     bot.action(action, async (ctx) => {
         await ctx.answerCbQuery('🚧 Em breve!');
     });
@@ -803,7 +793,7 @@ bot.action('energy', async (ctx) => {
 bot.action('menu', async (ctx) => {
     try {
         const player = getPlayerSafe(ctx.from.id);
-        await ctx.editMessageText(getMainMenuText(player), { parse_mode: 'Markdown', ...mainMenu() });
+        await ctx.editMessageText(getMainMenuText(player, ctx.from.first_name), { parse_mode: 'Markdown', ...mainMenu() });
     } catch (err) {
         console.error('Erro ao voltar:', err);
         await ctx.reply('Erro ao voltar ao menu.');
