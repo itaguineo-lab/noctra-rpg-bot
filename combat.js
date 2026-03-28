@@ -12,8 +12,10 @@ function fight(player) {
   let playerHp = player.hp;
   let enemyHp = enemy.hp;
 
+  const totalAtk = player.atk + (player.weapon ? player.weapon.atk : 0);
+
   while (playerHp > 0 && enemyHp > 0) {
-    enemyHp -= player.atk;
+    enemyHp -= totalAtk;
     playerHp -= enemy.atk;
   }
 
