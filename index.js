@@ -1,3 +1,7 @@
+const { getPlayer } = require('./players');
+const { updateEnergy, useEnergy } = require('./energy');
+const { fight } = require('./combat');
+
 const { Telegraf, Markup } = require('telegraf');
 const express = require('express');
 
