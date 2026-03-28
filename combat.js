@@ -1,4 +1,3 @@
-// combat.js
 function calculateDamage(atk, def) {
     const damage = Math.max(1, Math.floor(atk * (1 - def / (def + 100))));
     return damage;
@@ -23,7 +22,7 @@ function startCombat(player, enemy) {
             def: player.def,
             crit: player.crit,
             agi: player.agi,
-            critBonus: 0 // poderá ser aumentado por almas
+            critBonus: 0 // será aumentado por almas
         },
         enemy: {
             ...enemy,
@@ -70,13 +69,12 @@ function playerAttack(state) {
 }
 
 function playerFlee(state) {
-    const chance = 0.5; // 50% de sucesso
+    const chance = 0.5;
     if (Math.random() < chance) {
         state.ended = true;
         state.winner = 'fled';
         return { message: '🏃 Você fugiu com sucesso!', success: true };
     } else {
-        // Fuga falha: inimigo ataca
         const enemyBaseDamage = calculateDamage(state.enemy.atk, state.player.def);
         const enemyDamage = Math.floor(enemyBaseDamage);
         state.player.hp -= enemyDamage;
