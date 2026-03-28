@@ -11,7 +11,10 @@ function getPlayer(id) {
       xp: 0,
       level: 1,
       energy: 20,
-      lastEnergy: Date.now()
+      lastEnergy: Date.now(),
+
+      inventory: [],
+      weapon: null
     };
   }
   return players[id];
