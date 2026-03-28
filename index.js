@@ -51,21 +51,53 @@ function formatItemName(item) {
 }
 
 // Monta o texto do menu principal com barras de HP e XP
+// No index.js, modificar getMainMenuText()
 function getMainMenuText(player) {
     const xpNeeded = xpToNext(player.level);
     const xpPercent = Math.floor((player.xp / xpNeeded) * 100);
     const xpBar = progressBar(player.xp, xpNeeded, 10);
     const hpBar = progressBar(player.hp, player.maxHp, 10);
-
+    const energyBar = progressBar(player.energy, player.maxEnergy, 10);
+    
+    // Evento sazonal (simulado)
+    const events = getActiveEvents();
+    const eventText = events.length > 0 ? `🎉 EVENTOS: ${events.join(' | ')}\n` : '';
+    
+    // Data VIP
+    const vipText = player.vipExpires ? `✨ VIP até ${new Date(player.vipExpires).toLocaleDateString()}\n` : '';
+    
     return (
         `🌙 *Nocta*\n\n` +
-        `👤 ${player.class.charAt(0).toUpperCase() + player.class.slice(1)} Nv. ${player.level}\n` +
+        `👤 ${player.name || ctx.from.first_name} (${player.class})\n` +
+        `Nv. ${player.level} | XP: ${formatNumber(player.xp)} (Faltam: ${formatNumber(xpNeeded - player.xp)})\n` +
+        `[${xpBar}] ${xpPercent}%\n\n` +
         `❤️ HP: ${player.hp}/${player.maxHp} [${hpBar}] ${Math.floor((player.hp/player.maxHp)*100)}%\n` +
-        `✨ XP: ${formatNumber(player.xp)}/${formatNumber(xpNeeded)} [${xpBar}] ${xpPercent}%\n` +
-        `⚡ Energia: ${player.energy}/${player.maxEnergy}\n` +
-        `💰 Ouro: ${formatNumber(player.gold)}\n` +
-        `🗺️ ${getMap(player).name}\n`
+        `⚡ Energia: ${player.energy}/${player.maxEnergy} [${energyBar}] ${Math.floor((player.energy/player.maxEnergy)*100)}%\n` +
+        `⚔️ ATK ${player.atk} | 🛡️ DEF ${player.def} | ✨ CRIT ${player.crit}%\n\n` +
+        `${eventText}` +
+        `${vipText}` +
+        `🗝️ Chaves: ${player.keys || 0}\n` +
+        `💎 Runas: ${player.runas}\n` +
+        `💰 Gold: ${formatNumber(player.gold)}\n` +
+        `🗺️ Mapa: ${getMap(player).name} (Lv ${getMap(player).level})\n`
     );
+}
+
+// Eventos sazonais
+function getActiveEvents() {
+    const events = [];
+    const now = new Date();
+    const month = now.getMonth();
+    const day = now.getDate();
+    
+    // Outono (Mar-Jun no hemisfério sul)
+    if (month >= 2 && month <= 5) events.push('🍂 Outono');
+    // Páscoa (Mar-Abr)
+    if ((month === 2 && day >= 20) || (month === 3 && day <= 10)) events.push('🐣 Páscoa');
+    // Lua Cheia (simulado)
+    if (Math.random() < 0.1) events.push('🌕 Lua Cheia');
+    
+    return events;
 }
 
 // ========== MENUS ==========
