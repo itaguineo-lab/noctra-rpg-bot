@@ -1,31 +1,48 @@
-function randomEnemy(playerLevel) {
-    const enemies = [
-        { name: "Lobo Sombrio", hp: 80, atk: 12, def: 5, exp: 20, gold: 15 },
-        { name: "Rato Gigante", hp: 60, atk: 10, def: 3, exp: 15, gold: 10 }
-    ];
-    // aqui poderia filtrar por nível do mapa
-    return enemies[Math.floor(Math.random() * enemies.length)];
-}
+const { calculateDamage } = require('./combatUtils'); // vou criar
 
 function calculateDamage(atk, def) {
-    const damage = Math.max(1, atk * (1 - def / (def + 100)));
-    return Math.floor(damage);
+    const damage = Math.max(1, Math.floor(atk * (1 - def / (def + 100))));
+    return damage;
 }
 
-function fightTurn(player, enemy) {
-    // Jogador ataca
-    const playerDamage = calculateDamage(player.atk + (player.weapon?.atk || 0), enemy.def);
-    enemy.hp -= playerDamage;
-
-    if (enemy.hp <= 0) return { win: true, message: `Você causou ${playerDamage} de dano e derrotou ${enemy.name}!` };
-
-    // Inimigo ataca
-    const enemyDamage = calculateDamage(enemy.atk, player.def);
-    player.hp -= enemyDamage;
-
-    if (player.hp <= 0) return { win: false, message: `${enemy.name} causou ${enemyDamage} de dano e te derrotou.` };
-
-    return { win: null, message: `Você causou ${playerDamage} de dano. ${enemy.name} causou ${enemyDamage}.` };
+function startCombat(player, enemy) {
+    return {
+        player: { ...player }, // cópia dos stats atuais (hp, etc)
+        enemy: { ...enemy },
+        turn: 0,
+        ended: false,
+        winner: null
+    };
 }
 
-module.exports = { randomEnemy, calculateDamage, fightTurn };
+function playerAttack(state) {
+    const damage = calculateDamage(state.player.atk, state.enemy.def);
+    state.enemy.hp -= damage;
+    if (state.enemy.hp <= 0) {
+        state.ended = true;
+        state.winner = 'player';
+        return { damage, enemyDied: true };
+    }
+    // inimigo contra-ataca
+    const enemyDamage = calculateDamage(state.enemy.atk, state.player.def);
+    state.player.hp -= enemyDamage;
+    if (state.player.hp <= 0) {
+        state.ended = true;
+        state.winner = 'enemy';
+        return { damage, enemyDamage, playerDied: true };
+    }
+    return { damage, enemyDamage };
+}
+
+function useItem(state, item) {
+    // aplicar efeito do item (cura, buff, etc)
+    // simplificado: apenas poção de vida
+    if (item.type === 'potion') {
+        const heal = item.value;
+        state.player.hp = Math.min(state.player.maxHp, state.player.hp + heal);
+        return { healed: heal };
+    }
+    // outros itens...
+}
+
+module.exports = { startCombat, playerAttack, calculateDamage, useItem };
