@@ -83,8 +83,17 @@ bot.action('status', async (ctx) => {
   const player = getPlayer(ctx.from.id);
   updateEnergy(player);
 
+  const xpMax = xpToNext(player.level);
+
   ctx.reply(
-    `👤 STATUS\n\n❤️ HP: ${player.hp}/${player.maxHp}\n⚔️ ATK: ${player.atk}\n🛡️ DEF: ${player.def}\n\n⚡ Energia: ${player.energy}/20\n💰 Gold: ${player.gold}\n✨ XP: ${player.xp}`
+    `👤 PERSONAGEM\n\n` +
+    `📊 Level: ${player.level}\n` +
+    progressBar(player.xp, xpMax) + `\n` +
+    `${player.xp}/${xpMax} XP\n\n` +
+    `❤️ HP: ${player.hp}/${player.maxHp}\n` +
+    `⚔️ ATK: ${player.atk}\n🛡️ DEF: ${player.def}\n\n` +
+    `⚡ Energia: ${player.energy}/20\n` +
+    `💰 Gold: ${player.gold}`
   );
 });
 
