@@ -12,7 +12,7 @@ const { generateItem } = require('./items');
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const activeFights = new Map();
 
-// Servidor para manter o bot acordado (Replit)
+// Servidor para manter o bot acordado
 const app = express();
 app.get('/', (req, res) => res.send('Nocta Online!'));
 app.listen(process.env.PORT || 3000);
@@ -44,10 +44,10 @@ function getRarityColor(rarity) {
     return colors[rarity] || '⚪';
 }
 
-// Formata o nome do item com cor (usando emoji de cor)
+// Formata o nome do item com cor
 function formatItemName(item) {
     const colorEmoji = getRarityColor(item.rarity);
-    return `${colorEmoji} *${item.name}* (${item.rarity})`;
+    return `${colorEmoji} *${item.name}*`;
 }
 
 // Monta o texto do menu principal com barras de HP e XP
@@ -185,10 +185,6 @@ bot.action('combat_attack', async (ctx) => {
                 savePlayer(ctx.from.id, player);
                 await ctx.editMessageText(response + `\n💀 *Você foi derrotado!* Seu HP foi reduzido a ${player.hp}/${player.maxHp}.` + '\n\n' + getMainMenuText(player), 
                     { parse_mode: 'Markdown', ...mainMenu() });
-            } else if (result.winner === 'fled') {
-                const player = getPlayerSafe(ctx.from.id);
-                await ctx.editMessageText(response + '\n\n' + getMainMenuText(player), 
-                    { parse_mode: 'Markdown', ...mainMenu() });
             }
         } else {
             const msg = response + `\n\n❤️ Seu HP: ${fight.player.hp}/${fight.player.maxHp}\n` +
@@ -211,24 +207,29 @@ bot.action('combat_flee', async (ctx) => {
         }
 
         const result = playerFlee(fight);
-        if (result.success || fight.ended) {
-            activeFights.delete(ctx.from.id);
-            if (fight.winner === 'enemy') {
-                const player = getPlayer(ctx.from.id);
+        
+        // SEMPRE sair do combate, independente do resultado
+        activeFights.delete(ctx.from.id);
+        
+        if (result.success) {
+            // Fuga bem sucedida
+            const player = getPlayerSafe(ctx.from.id);
+            await ctx.editMessageText(result.message + '\n\n' + getMainMenuText(player), 
+                { parse_mode: 'Markdown', ...mainMenu() });
+        } else {
+            // Fuga falhou, mas ainda sai do combate
+            const player = getPlayer(ctx.from.id);
+            player.hp = fight.player.hp; // atualiza HP do jogador com o dano da fuga
+            if (player.hp <= 0) {
                 player.hp = Math.floor(player.maxHp * 0.5);
                 savePlayer(ctx.from.id, player);
                 await ctx.editMessageText(result.message + `\n💀 Você foi derrotado!` + '\n\n' + getMainMenuText(player), 
                     { parse_mode: 'Markdown', ...mainMenu() });
             } else {
-                const player = getPlayerSafe(ctx.from.id);
+                savePlayer(ctx.from.id, player);
                 await ctx.editMessageText(result.message + '\n\n' + getMainMenuText(player), 
                     { parse_mode: 'Markdown', ...mainMenu() });
             }
-        } else {
-            const msg = result.message + `\n\n❤️ Seu HP: ${fight.player.hp}/${fight.player.maxHp}\n` +
-                        `🐺 HP inimigo: ${fight.enemy.hp}/${fight.enemy.maxHp}\n\n` +
-                        `Escolha sua próxima ação:`;
-            await ctx.editMessageText(msg, combatMenu());
         }
     } catch (err) {
         console.error('Erro ao fugir:', err);
@@ -278,59 +279,127 @@ bot.action('profile', async (ctx) => {
     }
 });
 
-// ========== INVENTÁRIO COM BOTÕES EQUIPAR ==========
+// ========== INVENTÁRIO COM EQUIPAR E DESEQUIPAR ==========
+// Guarda a página atual do inventário
+const invPages = new Map();
+
 bot.action('inventory', async (ctx) => {
     try {
         const player = getPlayerSafe(ctx.from.id);
+        
+        // Mostra itens equipados primeiro
+        let text = `🎒 *INVENTÁRIO* (${player.inventory.length}/${player.maxInventory})\n\n`;
+        
+        // Seção: Itens Equipados
+        text += `⚔️ *EQUIPADOS*\n`;
+        const slotEmojis = {
+            weapon: '⚔️', armor: '🛡️', helmet: '⛑️', boots: '👢',
+            ring: '💍', necklace: '📿', bag: '🎒'
+        };
+        
+        let hasEquipped = false;
+        for (const [slot, item] of Object.entries(player.equipment)) {
+            if (item) {
+                hasEquipped = true;
+                text += `   ${slotEmojis[slot]} ${formatItemName(item)}\n`;
+                text += `      ⚔️ +${item.atk} | 🛡️ +${item.def} | ✨ +${item.crit} | ❤️ +${item.hp}\n`;
+            }
+        }
+        if (!hasEquipped) {
+            text += `   Nenhum item equipado\n`;
+        }
+        
+        // Seção: Itens no Inventário
+        text += `\n📦 *NO INVENTÁRIO*\n`;
+        
         if (player.inventory.length === 0) {
-            return ctx.editMessageText('🎒 Seu inventário está vazio.\n\n' + getMainMenuText(player), 
-                { parse_mode: 'Markdown', ...mainMenu() });
+            text += `   Nenhum item no inventário\n`;
+        } else {
+            const itemsPerPage = 4;
+            const totalPages = Math.ceil(player.inventory.length / itemsPerPage);
+            let page = invPages.get(ctx.from.id) || 1;
+            if (page < 1) page = 1;
+            if (page > totalPages) page = totalPages;
+            
+            const start = (page - 1) * itemsPerPage;
+            const itemsToShow = player.inventory.slice(start, start + itemsPerPage);
+            
+            if (totalPages > 1) {
+                text += `Página ${page} de ${totalPages}\n`;
+            }
+            
+            itemsToShow.forEach((item) => {
+                text += `\n${getRarityColor(item.rarity)} *${item.name}* (${item.rarity})\n`;
+                text += `   ⚔️ +${item.atk} | 🛡️ +${item.def} | ✨ +${item.crit} | ❤️ +${item.hp}\n`;
+            });
+            
+            // Botões de paginação para o inventário
+            const navButtons = [];
+            if (page > 1) {
+                navButtons.push(Markup.button.callback('◀️ Anterior', 'inv_prev'));
+            }
+            if (page < totalPages) {
+                navButtons.push(Markup.button.callback('Próximo ▶️', 'inv_next'));
+            }
+            
+            invPages.set(ctx.from.id, page);
+            
+            // Montar teclado com botões de equipar para cada item
+            const keyboard = [];
+            
+            // Adiciona botões para cada item da página atual
+            itemsToShow.forEach((item) => {
+                keyboard.push([Markup.button.callback(`⚔️ Equipar ${item.name}`, `equip_item_${item.id}`)]);
+            });
+            
+            // Adiciona botões de paginação
+            if (navButtons.length > 0) {
+                keyboard.push(navButtons);
+            }
+            
+            // Botões para desequipar
+            const unequipButtons = [];
+            for (const [slot, item] of Object.entries(player.equipment)) {
+                if (item) {
+                    const slotName = {
+                        weapon: 'Arma', armor: 'Armadura', helmet: 'Capacete', 
+                        boots: 'Botas', ring: 'Anel', necklace: 'Colar', bag: 'Mochila'
+                    }[slot];
+                    unequipButtons.push(Markup.button.callback(`🔄 Desequipar ${slotName}`, `unequip_${slot}`));
+                }
+            }
+            if (unequipButtons.length > 0) {
+                keyboard.push(unequipButtons);
+            }
+            
+            keyboard.push([Markup.button.callback('◀️ Voltar ao Menu', 'menu')]);
+            
+            await ctx.editMessageText(text, { 
+                parse_mode: 'Markdown', 
+                ...Markup.inlineKeyboard(keyboard) 
+            });
+            return;
         }
-
-        // Limita a 10 itens por página (evita mensagem muito longa)
-        const itemsPerPage = 5;
-        const totalPages = Math.ceil(player.inventory.length / itemsPerPage);
-        let page = parseInt(ctx.session?.invPage) || 1;
-        if (isNaN(page)) page = 1;
-        if (page < 1) page = 1;
-        if (page > totalPages) page = totalPages;
-
-        const start = (page - 1) * itemsPerPage;
-        const itemsToShow = player.inventory.slice(start, start + itemsPerPage);
-
-        let text = `🎒 *Inventário* (${player.inventory.length}/${player.maxInventory})\n`;
-        if (totalPages > 1) {
-            text += `Página ${page} de ${totalPages}\n`;
-        }
-        text += `\n`;
-
-        // Monta teclado com botões de equipar
+        
+        // Se não tem itens no inventário, mostra só os equipados
         const keyboard = [];
-        itemsToShow.forEach((item) => {
-            text += `${getRarityColor(item.rarity)} *${item.name}* (${item.rarity})\n`;
-            text += `   ⚔️ +${item.atk} | 🛡️ +${item.def} | ✨ +${item.crit} | ❤️ +${item.hp}\n`;
-            // Adiciona botão de equipar para cada item
-            keyboard.push([Markup.button.callback(`⚔️ Equipar ${item.name}`, `equip_item_${item.id}`)]);
-            text += `\n`;
-        });
-
-        // Botões de paginação
-        const navButtons = [];
-        if (page > 1) {
-            navButtons.push(Markup.button.callback('◀️ Anterior', 'inv_prev'));
+        
+        // Botões para desequipar
+        const unequipButtons = [];
+        for (const [slot, item] of Object.entries(player.equipment)) {
+            if (item) {
+                const slotName = {
+                    weapon: 'Arma', armor: 'Armadura', helmet: 'Capacete', 
+                    boots: 'Botas', ring: 'Anel', necklace: 'Colar', bag: 'Mochila'
+                }[slot];
+                unequipButtons.push(Markup.button.callback(`🔄 Desequipar ${slotName}`, `unequip_${slot}`));
+            }
         }
-        if (page < totalPages) {
-            navButtons.push(Markup.button.callback('Próximo ▶️', 'inv_next'));
-        }
-        if (navButtons.length > 0) {
-            keyboard.push(navButtons);
+        if (unequipButtons.length > 0) {
+            keyboard.push(unequipButtons);
         }
         keyboard.push([Markup.button.callback('◀️ Voltar ao Menu', 'menu')]);
-
-        // Guarda a página atual na sessão (usando um Map simples)
-        if (!ctx.session) ctx.session = {};
-        ctx.session.invPage = page;
-
+        
         await ctx.editMessageText(text, { 
             parse_mode: 'Markdown', 
             ...Markup.inlineKeyboard(keyboard) 
@@ -343,21 +412,19 @@ bot.action('inventory', async (ctx) => {
 
 // Navegação do inventário
 bot.action('inv_prev', async (ctx) => {
-    if (!ctx.session) ctx.session = {};
-    let page = ctx.session.invPage || 1;
+    let page = invPages.get(ctx.from.id) || 1;
     if (page > 1) page--;
-    ctx.session.invPage = page;
+    invPages.set(ctx.from.id, page);
     await ctx.answerCbQuery();
     await bot.actions.inventory(ctx);
 });
 
 bot.action('inv_next', async (ctx) => {
-    if (!ctx.session) ctx.session = {};
-    let page = ctx.session.invPage || 1;
+    let page = invPages.get(ctx.from.id) || 1;
     const player = getPlayerSafe(ctx.from.id);
-    const totalPages = Math.ceil(player.inventory.length / 5);
+    const totalPages = Math.ceil(player.inventory.length / 4);
     if (page < totalPages) page++;
-    ctx.session.invPage = page;
+    invPages.set(ctx.from.id, page);
     await ctx.answerCbQuery();
     await bot.actions.inventory(ctx);
 });
@@ -387,11 +454,53 @@ bot.action(/^equip_item_(.+)$/, async (ctx) => {
         
         await ctx.answerCbQuery(`✅ ${item.name} equipado!`);
         
-        // Atualiza o inventário para mostrar a lista atualizada
+        // Reseta a página do inventário
+        invPages.delete(ctx.from.id);
+        
+        // Atualiza o inventário
         await bot.actions.inventory(ctx);
     } catch (err) {
         console.error('Erro ao equipar:', err);
         await ctx.answerCbQuery('Erro ao equipar item.');
+    }
+});
+
+// Ação de desequipar via botão
+bot.action(/^unequip_(.+)$/, async (ctx) => {
+    try {
+        const slot = ctx.match[1];
+        const player = getPlayer(ctx.from.id);
+        const item = player.equipment[slot];
+        
+        if (!item) {
+            await ctx.answerCbQuery('Nada equipado neste slot!');
+            return;
+        }
+        
+        // Verifica espaço no inventário
+        if (player.inventory.length >= player.maxInventory) {
+            await ctx.answerCbQuery('❌ Inventário cheio! Venda ou descarte itens primeiro.');
+            return;
+        }
+        
+        // Move para o inventário
+        player.inventory.push(item);
+        player.equipment[slot] = null;
+        recalculateStats(player);
+        savePlayer(ctx.from.id, player);
+        
+        const slotName = {
+            weapon: 'Arma', armor: 'Armadura', helmet: 'Capacete', 
+            boots: 'Botas', ring: 'Anel', necklace: 'Colar', bag: 'Mochila'
+        }[slot];
+        
+        await ctx.answerCbQuery(`🔄 ${item.name} removido!`);
+        
+        // Atualiza o inventário
+        await bot.actions.inventory(ctx);
+    } catch (err) {
+        console.error('Erro ao desequipar:', err);
+        await ctx.answerCbQuery('Erro ao desequipar item.');
     }
 });
 
