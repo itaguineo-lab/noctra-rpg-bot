@@ -1,8 +1,8 @@
 const raridades = [
-  { name: "Comum", emoji: "⚪", chance: 50, mult: 1 },
-  { name: "Incomum", emoji: "🟢", chance: 30, mult: 1.2 },
-  { name: "Raro", emoji: "🔵", chance: 15, mult: 1.5 },
-  { name: "Épico", emoji: "🟣", chance: 5, mult: 2 }
+  { name: "Comum", emoji: "⚪", chance: 50, mult: 1, price: 10 },
+  { name: "Incomum", emoji: "🟢", chance: 30, mult: 1.2, price: 20 },
+  { name: "Raro", emoji: "🔵", chance: 15, mult: 1.5, price: 40 },
+  { name: "Épico", emoji: "🟣", chance: 5, mult: 2, price: 80 }
 ];
 
 function getRarity() {
@@ -27,7 +27,8 @@ function generateItem(playerLevel) {
     name: "Arma Sombria",
     atk,
     rarity: rarity.name,
-    emoji: rarity.emoji
+    emoji: rarity.emoji,
+    price: rarity.price
   };
 }
 
