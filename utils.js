@@ -5,4 +5,8 @@ function progressBar(current, max, size = 10) {
     return '█'.repeat(filled) + '░'.repeat(empty);
 }
 
-module.exports = { progressBar };
+function formatNumber(num) {
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+module.exports = { progressBar, formatNumber };
