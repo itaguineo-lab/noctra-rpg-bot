@@ -55,12 +55,15 @@ bot.action('hunt', async (ctx) => {
     msg += `✨ +${result.xp} XP\n💰 +${result.gold} Gold\n`;
 
     if (Math.random() < 0.5) {
-      const item = generateItem(player.level);
-      player.inventory.push(item);
+  if (player.inventory.length >= player.maxInventory) {
+    msg += `\n🎒 Inventário cheio!`;
+  } else {
+    const item = generateItem(player.level);
+    player.inventory.push(item);
 
-      msg += `\n🎁 Item encontrado!\n`;
-      msg += `${item.emoji} ${item.name} (+${item.atk} ATK)\n`;
-    }
+    msg += `\n🎁 Item encontrado!\n`;
+    msg += `${item.emoji} ${item.name} (+${item.atk} ATK)\n`;
+  }
 
     msg += `\n`;
   } else {
