@@ -107,14 +107,17 @@ bot.action('inventory', async (ctx) => {
 
   let buttons = player.inventory.map((item, i) => [
     Markup.button.callback(
-      `${item.emoji} ${item.name} (+${item.atk})`,
-      `equip_${i}`
+      `${item.emoji} ${item.name} (+${item.atk}) 💰${item.price}`,
+      `item_${i}`
     )
   ]);
 
   buttons.push([Markup.button.callback('🏠 Menu', 'menu')]);
 
-  ctx.editMessageText('🎒 Inventário:', Markup.inlineKeyboard(buttons));
+  ctx.editMessageText(
+    `🎒 Inventário (${player.inventory.length}/${player.maxInventory})`,
+    Markup.inlineKeyboard(buttons)
+  );
 });
 
 // EQUIPAR
