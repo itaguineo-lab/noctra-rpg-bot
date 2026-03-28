@@ -37,22 +37,39 @@ bot.action('hunt', async (ctx) => {
   await ctx.answerCbQuery();
 
   const player = getPlayer(ctx.from.id);
-
   updateEnergy(player);
 
   if (!useEnergy(player)) {
-    return ctx.reply('❌ Sem energia! Aguarde regenerar.');
+    return ctx.reply('❌ Sem energia!');
   }
 
   const result = fight(player);
 
+  const leveledUp = checkLevelUp(player);
+
+  const xpMax = xpToNext(player.level);
+
+  let msg = `⚔️ COMBATE\n\n`;
+
   if (result.result === 'win') {
-    ctx.reply(
-      `⚔️ Você derrotou ${result.enemy}!\n\n💰 +${result.gold} gold\n✨ +${result.xp} XP`
-    );
+    msg += `🏆 Vitória contra ${result.enemy}\n\n`;
+    msg += `✨ +${result.xp} XP\n💰 +${result.gold} Gold\n\n`;
   } else {
-    ctx.reply(`💀 Você foi derrotado por ${result.enemy}`);
+    msg += `💀 Derrota para ${result.enemy}\n\n`;
   }
+
+  msg += `📊 LEVEL ${player.level}\n`;
+  msg += progressBar(player.xp, xpMax) + `\n`;
+  msg += `${player.xp}/${xpMax} XP\n\n`;
+
+  msg += `❤️ HP: ${player.hp}/${player.maxHp}\n`;
+  msg += `⚡ Energia: ${player.energy}/20`;
+
+  if (leveledUp) {
+    msg += `\n\n🔥 LEVEL UP!`;
+  }
+
+  ctx.reply(msg);
 });
 
 bot.action('explore', async (ctx) => {
