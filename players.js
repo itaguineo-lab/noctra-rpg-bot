@@ -1,6 +1,5 @@
 const players = {};
 
-// Atributos base de cada classe no nível 1 (sem AGI)
 const baseStats = {
     warrior: { hp: 120, atk: 18, def: 20, crit: 2 },
     archer:  { hp: 100, atk: 22, def: 15, crit: 7 },
@@ -37,7 +36,8 @@ function getPlayer(id, className = 'archer') {
                 necklace: null,
                 bag: null
             },
-            souls: [null, null],
+            souls: [null, null], // 2 slots de almas
+            soulsCooldown: {}, // para controle de cooldown em combate
             inventory: [],
             maxInventory: 20,
             currentMap: "Clareira Sombria"
@@ -57,6 +57,7 @@ function recalculateStats(player) {
     let totalDef = base.def + (player.level - 1);
     let totalCrit = base.crit + (player.level - 1) * 0.5;
 
+    // Bônus de equipamentos
     for (const slot in player.equipment) {
         const item = player.equipment[slot];
         if (item) {
@@ -67,6 +68,16 @@ function recalculateStats(player) {
             if (slot === 'bag' && item.extraSlots) {
                 player.maxInventory = 20 + item.extraSlots;
             }
+        }
+    }
+
+    // Bônus passivos de almas (se equipadas)
+    for (const soul of player.souls) {
+        if (soul && soul.passiveBonus) {
+            totalAtk += soul.passiveBonus.atk || 0;
+            totalDef += soul.passiveBonus.def || 0;
+            totalCrit += soul.passiveBonus.crit || 0;
+            totalHp += soul.passiveBonus.hp || 0;
         }
     }
 
