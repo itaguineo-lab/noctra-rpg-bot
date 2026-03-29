@@ -1,5 +1,5 @@
 
-const { savePlayer } = require('../../data/players');
+const { savePlayer } = require('../data/players');
 
 /**
  * Calcula e aplica a regeneração de energia baseada no tempo decorrido.
