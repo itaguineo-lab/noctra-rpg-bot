@@ -10,12 +10,34 @@ const {
 } = require('../../data/combatLogic');
 const { checkLevelUp } = require('../../data/level');
 const { generateItem } = require('../../data/items');
-const { dropSoul, formatSoulName } = require('../../data/souls');
+const { dropSoul } = require('../../data/souls');
 const { getRewardMultipliers, getMainMenuText } = require('../utils/helpers');
-const { formatItemName } = require('../utils/formatters');
+const { formatItemName, formatSoulName } = require('../utils/formatters');
 const { combatMenu, consumablesMenu, soulsMenu } = require('../menus/combatMenu');
 const { mainMenu } = require('../menus/mainMenu');
 
 const activeFights = new Map();
 
-// ... resto do código do handler (como já estava)
+// ========== HANDLERS ==========
+async function handleHunt(ctx) {
+    try {
+        const player = getPlayer(ctx.from.id);
+        // ... (código existente)
+    } catch (err) {
+        console.error('Erro ao caçar:', err);
+        await ctx.reply('Ocorreu um erro. Tente novamente.');
+    }
+}
+
+// ... (resto do código do handler)
+
+module.exports = {
+    activeFights,
+    handleHunt,
+    handleCombatAttack,
+    handleCombatFlee,
+    handleCombatItems,
+    handleCombatSouls,
+    handleUseSoul,
+    handleUseConsumable
+};
