@@ -1,4 +1,5 @@
 const { Markup } = require('telegraf');
+
 function mainMenu() {
     return Markup.inlineKeyboard([
         [Markup.button.callback('⚔️ Caçar', 'hunt'), Markup.button.callback('🗺️ Viajar', 'travel')],
@@ -9,4 +10,5 @@ function mainMenu() {
         [Markup.button.callback('🎁 Baú Diário', 'daily'), Markup.button.callback('👥 Online', 'online')]
     ]);
 }
+
 module.exports = { mainMenu };
