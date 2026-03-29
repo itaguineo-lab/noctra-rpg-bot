@@ -4,7 +4,7 @@ const { xpToNext } = require('../core/player/progression');
 const { progressBar, formatNumber } = require('./formatters');
 
 /**
- * Obtém o player já com energia atualizada e status recalculados
+ * Obtém o player já com energia atualizada e status  recalculados
  */
 function getPlayerSafe(id) {
     const player = getPlayer(id);
