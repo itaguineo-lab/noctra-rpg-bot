@@ -1,6 +1,6 @@
-const { getPlayer, recalculateStats } = require('../data/players');
+const { getPlayer, recalculateStats } = require('../scr/core/player/playerService');
 const { updateEnergy } = require('../services/energyService');
-const { xpToNext } = require('../data/level');
+const { xpToNext } = require('../scr/core/player/progression');
 const { progressBar, formatNumber } = require('./formatters');
 
 /**
