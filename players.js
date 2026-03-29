@@ -17,7 +17,7 @@ function getPlayer(id, className = 'archer') {
             level: 1,
             xp: 0,
             gold: 0,
-            nox: 0,           // <-- moeda VIP (antes era runas)
+            nox: 0,
             glorias: 0,
             energy: 20,
             maxEnergy: 20,
@@ -37,20 +37,21 @@ function getPlayer(id, className = 'archer') {
                 bag: null
             },
             souls: [null, null],
-            soulsCooldown: {},
             inventory: [],
             maxInventory: 20,
             skin: null,
             skins: [],
+            // Consumíveis (quantidades)
             consumables: {
-                potionHp: 0,
+                potionHp: 3,      // começa com 3 poções
                 potionEnergy: 0,
                 tonicStrength: 0,
                 tonicDefense: 0,
                 tonicPrecision: 0
             },
-            keys: 0,
+            keys: 3,              // 3 chaves iniciais
             keyLastDaily: null,
+            lastDaily: null,      // último dia do baú diário
             renamed: false,
             classChanged: false,
             currentMap: "Clareira Sombria"
@@ -106,4 +107,19 @@ function giveDailyKeys(player) {
     return false;
 }
 
-module.exports = { getPlayer, savePlayer, recalculateStats, giveDailyKeys };
+function giveDailyChest(player) {
+    const today = new Date().toDateString();
+    if (player.lastDaily !== today) {
+        const gold = Math.floor(Math.random() * 200) + 50;
+        const keys = Math.floor(Math.random() * 2) + 1;
+        const nox = Math.random() < 0.3 ? 5 : 0;
+        player.gold += gold;
+        player.keys += keys;
+        player.nox += nox;
+        player.lastDaily = today;
+        return { gold, keys, nox };
+    }
+    return null;
+}
+
+module.exports = { getPlayer, savePlayer, recalculateStats, giveDailyKeys, giveDailyChest };
