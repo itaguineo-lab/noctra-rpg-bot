@@ -1,20 +1,21 @@
+const { RARITY_MULT, RARITY_EMOJIS } = require('./constants');
+
 const raridades = [
-    { name: "Comum", emoji: "⚪", chance: 45, mult: 1.0, price: 10 },
-    { name: "Incomum", emoji: "🟢", chance: 30, mult: 1.2, price: 20 },
-    { name: "Raro", emoji: "🔵", chance: 15, mult: 1.5, price: 40 },
-    { name: "Épico", emoji: "🟣", chance: 7, mult: 2.0, price: 80 },
-    { name: "Lendário", emoji: "🟡", chance: 2.5, mult: 2.5, price: 150 },
-    { name: "Mítico", emoji: "🔴", chance: 0.5, mult: 3.0, price: 300 }
+    { name: "Comum", chance: 45, price: 10 },
+    { name: "Incomum", chance: 30, price: 25 },
+    { name: "Raro", chance: 15, price: 60 },
+    { name: "Épico", chance: 7, price: 150 },
+    { name: "Lendário", chance: 2.5, price: 400 },
+    { name: "Mítico", chance: 0.5, price: 1000 }
 ];
 
 const itemTypes = [
-    { slot: "weapon", namePrefix: "Espada", atkBase: 5, defBase: 0, critBase: 0, hpBase: 0 },
-    { slot: "armor", namePrefix: "Armadura", atkBase: 0, defBase: 5, critBase: 0, hpBase: 0 },
+    { slot: "weapon", namePrefix: "Espada", atkBase: 5, defBase: 0, critBase: 2, hpBase: 0 },
+    { slot: "armor", namePrefix: "Armadura", atkBase: 0, defBase: 5, critBase: 0, hpBase: 10 },
     { slot: "helmet", namePrefix: "Elmo", atkBase: 0, defBase: 3, critBase: 0, hpBase: 5 },
-    { slot: "boots", namePrefix: "Botas", atkBase: 0, defBase: 2, critBase: 0, hpBase: 3 },
-    { slot: "ring", namePrefix: "Anel", atkBase: 2, defBase: 0, critBase: 2, hpBase: 0 },
-    { slot: "necklace", namePrefix: "Colar", atkBase: 1, defBase: 1, critBase: 1, hpBase: 2 },
-    { slot: "bag", namePrefix: "Mochila", atkBase: 0, defBase: 0, critBase: 0, hpBase: 0, extraSlots: 5 }
+    { slot: "boots", namePrefix: "Botas", atkBase: 0, defBase: 2, critBase: 1, hpBase: 3 },
+    { slot: "ring", namePrefix: "Anel", atkBase: 2, defBase: 0, critBase: 3, hpBase: 0 },
+    { slot: "necklace", namePrefix: "Colar", atkBase: 1, defBase: 1, critBase: 1, hpBase: 5 }
 ];
 
 function getRarity() {
@@ -27,21 +28,39 @@ function getRarity() {
     return raridades[0];
 }
 
+/**
+ * Gera um item aleatório baseado no nível do jogador
+ * @param {number} playerLevel Nível do jogador para escalar os status
+ * @param {string} forcedType (Opcional) Forçar um slot específico
+ */
 function generateItem(playerLevel, forcedType = null) {
-    const type = forcedType || itemTypes[Math.floor(Math.random() * itemTypes.length)];
+    const type = forcedType 
+        ? itemTypes.find(t => t.slot === forcedType) || itemTypes[0]
+        : itemTypes[Math.floor(Math.random() * itemTypes.length)];
+    
     const rarity = getRarity();
-    const levelBonus = Math.floor(playerLevel * 0.5);
-    const atk = Math.floor((type.atkBase + levelBonus) * rarity.mult);
-    const def = Math.floor((type.defBase + levelBonus) * rarity.mult);
-    const crit = Math.floor((type.critBase + levelBonus/2) * rarity.mult);
-    const hp = Math.floor((type.hpBase + levelBonus) * rarity.mult);
-    const extraSlots = type.extraSlots ? Math.floor(type.extraSlots * rarity.mult) : 0;
+    const mult = RARITY_MULT[rarity.name];
+    
+    // Escalonamento por nível: Base + (Nível * 0.5)
+    const levelBonus = Math.floor(playerLevel * 0.7);
+
+    // Criação do objeto do item
     return {
-        id: Date.now() + Math.random() + Math.floor(Math.random() * 1000),
-        name: `${rarity.name} ${type.namePrefix}`, slot: type.slot, rarity: rarity.name,
-        emoji: rarity.emoji, atk, def, crit, hp, extraSlots,
-        price: Math.floor(rarity.price * (playerLevel / 5 + 1))
+        id: `${Date.now()}_${Math.floor(Math.random() * 1000)}`, // ID único string
+        name: `${type.namePrefix} de ${rarity.name}`,
+        slot: type.slot,
+        rarity: rarity.name,
+        atk: Math.floor((type.atkBase + levelBonus) * mult),
+        def: Math.floor((type.defBase + levelBonus) * mult),
+        crit: Math.floor((type.critBase + (levelBonus / 2)) * mult),
+        hp: Math.floor((type.hpBase + (levelBonus * 2)) * mult),
+        price: Math.floor(rarity.price * (1 + playerLevel * 0.1)),
+        emoji: RARITY_EMOJIS[rarity.name]
     };
 }
 
-module.exports = { generateItem, raridades, itemTypes };
+module.exports = { 
+    raridades, 
+    itemTypes, 
+    generateItem 
+};
