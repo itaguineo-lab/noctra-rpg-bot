@@ -1,31 +1,47 @@
+/**
+ * Configuração dos mapas do jogo.
+ */
 const maps = [
-    { name: "Clareira Sombria", level: 1, enemies: [
-        { name: "Lobo Sombrio", hp: 80, atk: 12, def: 5, exp: 20, gold: 15, minLevel: 1 },
-        { name: "Rato Gigante", hp: 60, atk: 10, def: 3, exp: 15, gold: 10, minLevel: 1 }
-    ] },
-    { name: "Cripta em Ruínas", level: 8, enemies: [
-        { name: "Esqueleto Guerreiro", hp: 150, atk: 18, def: 10, exp: 40, gold: 25, minLevel: 8 },
-        { name: "Mago Esqueleto", hp: 120, atk: 22, def: 8, exp: 45, gold: 30, minLevel: 8 }
-    ] },
-    { name: "Pântano Corrompido", level: 15, enemies: [
-        { name: "Ghoul Pantanoso", hp: 230, atk: 25, def: 12, exp: 70, gold: 45, minLevel: 15 },
-        { name: "Cobra Venenosa", hp: 180, atk: 28, def: 10, exp: 65, gold: 40, minLevel: 15 }
-    ] },
-    { name: "Deserto Incandescente", level: 24, enemies: [
-        { name: "Escorpião de Fogo", hp: 380, atk: 32, def: 15, exp: 100, gold: 70, minLevel: 24 },
-        { name: "Djinn", hp: 300, atk: 35, def: 12, exp: 110, gold: 80, minLevel: 24 }
-    ] },
-    { name: "Montanhas Gélidas", level: 35, enemies: [
-        { name: "Gigante de Gelo", hp: 500, atk: 40, def: 20, exp: 150, gold: 100, minLevel: 35 },
-        { name: "Yeti", hp: 450, atk: 38, def: 18, exp: 140, gold: 95, minLevel: 35 }
-    ] }
+    { 
+        name: "Clareira Sombria", 
+        level: 1, 
+        description: "Um local denso onde a luz raramente toca o chão.",
+        emoji: "🌲"
+    },
+    { 
+        name: "Cripta em Ruínas", 
+        level: 8, 
+        description: "Onde os mortos não descansam em paz.",
+        emoji: "⚰️"
+    },
+    { 
+        name: "Pântano Corrompido", 
+        level: 15, 
+        description: "Águas paradas que escondem criaturas venenosas.",
+        emoji: "🍄"
+    },
+    { 
+        name: "Deserto Incandescente", 
+        level: 24, 
+        description: "O calor é tão mortal quanto os escorpiões.",
+        emoji: "🏜️"
+    }
 ];
 
-function getMap(player) { return maps.find(m => player.level >= m.level) || maps[0]; }
-function getMapByName(name) { return maps.find(m => m.name === name); }
-function getRandomEnemy(player) {
-    const map = getMap(player);
-    const available = map.enemies.filter(e => player.level >= e.minLevel);
-    return available.length ? available[Math.floor(Math.random() * available.length)] : map.enemies[0];
+/**
+ * Busca um mapa pelo nome.
+ */
+function getMapByName(name) {
+    return maps.find(m => m.name === name);
 }
-module.exports = { getMap, getMapByName, getRandomEnemy, maps };
+
+/**
+ * Valida se o jogador tem nível suficiente para entrar no mapa.
+ */
+function canPlayerEnter(player, mapName) {
+    const map = getMapByName(mapName);
+    if (!map) return false;
+    return player.level >= map.level;
+}
+
+module.exports = { maps, getMapByName, canPlayerEnter };
