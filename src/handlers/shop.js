@@ -1,5 +1,5 @@
-const { getPlayer, savePlayer } = require('../../data/players');
-const { villageItems, castleItems, arenaItems } = require('../../data/shop');
+const { getPlayer, savePlayer } = require('../data/players');
+const { villageItems, castleItems, arenaItems } = require('../data/shop');
 const { shopTabsMenu, renderShop } = require('../menus/shopMenu');
 const { mainMenu } = require('../menus/mainMenu');
 
