@@ -1,5 +1,5 @@
 const { getPlayer, savePlayer } = require('../../data/players');
-const { getRandomEnemy } = require('../../data/maps');
+const { getRandomEnemy } = require('../data/maps');
 const { combatMenu } = require('../menus/combatMenu');
 
 const activeFights = new Map();
