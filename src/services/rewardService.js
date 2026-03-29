@@ -1,59 +1,56 @@
+const { savePlayer } = require('../core/player/playerService');
+const { generateItem } = require('../core/items');
+const { soulsList } = require('../core/player/souls');
+const { getRewardMultipliers } = require('../utils/helpers');
 
-const { generateItem } = require('../../data/items');
-const { checkLevelUp } = require('../../data/level');
-
-/**
- * Gera as recompensas de uma vitória em combate.
- * @param {Object} player - O jogador.
- * @param {Object} enemy - O inimigo derrotado.
- */
-function calculateBattleRewards(player, enemy) {
-    // Multiplicadores VIP (50% de bônus)
-    const multiplier = player.vip ? 1.5 : 1.0;
+function processVictory(player, enemy) {
+    const multipliers = getRewardMultipliers(player);
     
-    const rewards = {
-        gold: Math.floor(enemy.gold * multiplier),
-        xp: Math.floor(enemy.xp * multiplier),
-        item: null,
-        levelUp: false
+    // Cálculo de recompensas base
+    const xpGained = Math.floor(enemy.exp * multipliers.xp);
+    const goldGained = Math.floor(enemy.gold * multipliers.gold);
+    
+    player.xp += xpGained;
+    player.gold += goldGained;
+
+    let loot = [];
+    let droppedSoul = null;
+
+    // 1. Lógica de Drop de Itens (Comuns e Bosses)
+    // Bosses têm 100% de chance de item, monstros comuns 20%
+    const itemDropChance = enemy.isBoss ? 1.0 : 0.2;
+    if (Math.random() < itemDropChance) {
+        const newItem = generateItem(player.level);
+        player.inventory.push(newItem);
+        loot.push(newItem.name);
+    }
+
+    // 2. Lógica de Drop de Almas (EXCLUSIVO BOSSES)
+    if (enemy.isBoss && enemy.possibleSouls) {
+        const soulRoll = Math.random();
+        if (soulRoll < 0.30) { // 30% de chance de cair a alma do boss
+            const soulId = enemy.possibleSouls[Math.floor(Math.random() * enemy.possibleSouls.length)];
+            const soulTemplate = soulsList.find(s => s.id === soulId);
+            
+            if (soulTemplate) {
+                droppedSoul = { 
+                    ...soulTemplate, 
+                    id: Date.now(), // ID único para o inventário
+                    type: 'soul' 
+                };
+                player.inventory.push(droppedSoul);
+            }
+        }
+    }
+
+    savePlayer(player.id, player);
+
+    return {
+        xp: xpGained,
+        gold: goldGained,
+        loot: loot,
+        droppedSoul: droppedSoul
     };
-
-    // Aplica recompensas básicas
-    player.gold += rewards.gold;
-    player.xp += rewards.xp;
-
-    // Lógica de Drop de Item (ex: 20% de chance de cair algo)
-    const dropChance = 0.20;
-    if (Math.random() <= dropChance) {
-        rewards.item = generateItem(player.level);
-        player.inventory.push(rewards.item);
-    }
-
-    // Verifica se subiu de nível
-    if (checkLevelUp(player)) {
-        rewards.levelUp = true;
-    }
-
-    return rewards;
 }
 
-/**
- * Formata a mensagem de recompensa para o usuário.
- */
-function formatRewardMessage(rewards) {
-    let msg = `🎉 *Vitória!*\n\n`;
-    msg += `💰 +${rewards.gold} Ouro\n`;
-    msg += `✨ +${rewards.xp} XP\n`;
-    
-    if (rewards.item) {
-        msg += `🎁 *Drop:* ${rewards.item.emoji} ${rewards.item.name} (${rewards.item.rarity})\n`;
-    }
-    
-    if (rewards.levelUp) {
-        msg += `\n🆙 *LEVEL UP!* Você agora está no nível ${rewards.levelUp}!`;
-    }
-    
-    return msg;
-}
-
-module.exports = { calculateBattleRewards, formatRewardMessage };
+module.exports = { processVictory };
