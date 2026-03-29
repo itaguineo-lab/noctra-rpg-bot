@@ -1,5 +1,4 @@
 const { Markup } = require('telegraf');
-
 function inventoryCategoryMenu() {
     return Markup.inlineKeyboard([
         [Markup.button.callback('⚔️ Armas', 'inv_weapons'), Markup.button.callback('🛡️ Armaduras', 'inv_armors')],
@@ -8,5 +7,4 @@ function inventoryCategoryMenu() {
         [Markup.button.callback('◀️ Voltar', 'menu')]
     ]);
 }
-
 module.exports = { inventoryCategoryMenu };
