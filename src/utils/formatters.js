@@ -1,13 +1,31 @@
-const { getRarityEmoji } = require('../../data/souls');
+const { getRarityColor } = require('./constants');
 
-function formatSoulDisplay(soul) {
-    if (!soul) return null;
-    return `${getRarityEmoji(soul.rarity)} *${soul.name}* (${soul.rarity})`;
+function progressBar(current, max, size = 10) {
+    const percent = current / max;
+    const filled = Math.round(size * percent);
+    const empty = size - filled;
+    return '█'.repeat(filled) + '░'.repeat(empty);
 }
 
-function formatEquipmentDisplay(item, slotEmoji) {
-    if (!item) return `${slotEmoji} Vazio`;
-    return `${slotEmoji} ${item.name} (${item.rarity})\n   ⚔️ +${item.atk} | 🛡️ +${item.def} | ✨ +${item.crit} | ❤️ +${item.hp}`;
+function formatNumber(num) {
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-module.exports = { formatSoulDisplay, formatEquipmentDisplay };
+function formatItemName(item) {
+    if (!item) return '❓ Item inválido';
+    const colorEmoji = getRarityColor(item.rarity);
+    return `${colorEmoji} *${item.name}*`;
+}
+
+function formatSoulName(soul) {
+    if (!soul) return '❓ Alma inválida';
+    const emoji = getRarityColor(soul.rarity);
+    return `${emoji} *${soul.name}*`;
+}
+
+module.exports = { 
+    progressBar, 
+    formatNumber, 
+    formatItemName, 
+    formatSoulName 
+};
