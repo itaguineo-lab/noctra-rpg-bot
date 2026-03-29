@@ -1,4 +1,4 @@
-const { getPlayer, savePlayer, recalculateStats } = require('../../data/players');
+const { getPlayer, savePlayer, recalculateStats } = require('../data/players');
 
 async function handleEquip(ctx) {
     try {
