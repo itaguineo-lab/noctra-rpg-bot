@@ -2,8 +2,8 @@ const { getPlayerSafe, getMainMenuText } = require('../utils/helpers');
 const { formatItemName } = require('../utils/formatters');
 const { getRarityEmoji, SLOT_EMOJIS } = require('../utils/constants');
 const { progressBar, formatNumber } = require('../utils/formatters');
-const { xpToNext } = require('../../data/level');
-const { getMap } = require('../../data/maps');
+const { xpToNext } = require('../data/level');
+const { getMap } = require('../data/maps');
 const { Markup } = require('telegraf');
 const { mainMenu } = require('../menus/mainMenu');
 
