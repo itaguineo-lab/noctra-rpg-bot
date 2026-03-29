@@ -1,16 +1,19 @@
-const { RARITY_COLORS } = require('./constants');
-const { getMap } = require('../../data/maps');
+const { progressBar, formatNumber } = require('./formatters');
 const { xpToNext } = require('../../data/level');
-const { progressBar, formatNumber } = require('../../utils');
+const { getMap } = require('../../data/maps');
+const { getPlayer, updateEnergy, recalculateStats } = require('../../data/players');
 
-function getRarityColor(rarity) {
-    return RARITY_COLORS[rarity] || '⚪';
+function getPlayerUpdated(id) {
+    const player = getPlayer(id);
+    updateEnergy(player);
+    return player;
 }
 
-function formatItemName(item) {
-    if (!item) return '❓ Item inválido';
-    const colorEmoji = getRarityColor(item.rarity);
-    return `${colorEmoji} *${item.name}*`;
+function getPlayerSafe(id) {
+    const player = getPlayer(id);
+    updateEnergy(player);
+    recalculateStats(player);
+    return player;
 }
 
 function getActiveEvents() {
@@ -78,8 +81,8 @@ function getMainMenuText(player, username = null) {
 }
 
 module.exports = { 
-    getRarityColor, 
-    formatItemName, 
+    getPlayerUpdated, 
+    getPlayerSafe, 
     getActiveEvents, 
     getRewardMultipliers, 
     getMainMenuText 
