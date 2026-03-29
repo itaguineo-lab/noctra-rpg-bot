@@ -62,7 +62,7 @@ function getMainMenuText(player, username = null) {
     const nameDisplay = player.name || username || 'Aventureiro';
     
     return (
-        `🌙 *Noctra*\n\n` +
+        `🌙 *Noctra*\n\n` +  // <-- CORRIGIDO: Noctra, não Nocta
         `*${nameDisplay}* (${player.class.charAt(0).toUpperCase() + player.class.slice(1)})\n` +
         `Nv. ${player.level} | XP: ${formatNumber(player.xp)} (Faltam: ${formatNumber(xpNeeded - player.xp)})\n` +
         `[${xpBar}] ${xpPercent}%\n\n` +
