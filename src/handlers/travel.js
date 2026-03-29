@@ -1,5 +1,5 @@
-const { getPlayer, savePlayer } = require('../../data/players');
-const { maps, getMapByName } = require('../../data/maps');
+const { getPlayer, savePlayer } = require('../data/players');
+const { maps, getMapByName } = require('../data/maps');
 const { Markup } = require('telegraf');
 const { mainMenu } = require('../menus/mainMenu');
 
