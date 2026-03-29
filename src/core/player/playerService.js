@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const playersFilePath = path.join(__dirname, '../../../data/players.json');
+const playersFilePath = path.join(__dirname, '../data/players.json');
 
 function loadPlayers() {
     try {
