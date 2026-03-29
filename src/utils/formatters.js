@@ -1,4 +1,4 @@
-const { getRarityColor } = require('../../data/constants');
+const { getRarityColor } = require('../data/constants');
 
 /**
  * Cria uma barra de progresso visual
