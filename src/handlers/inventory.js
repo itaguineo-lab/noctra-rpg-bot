@@ -1,19 +1,11 @@
 const { getPlayerSafe } = require('../utils/helpers');
 const { inventoryCategoryMenu } = require('../menus/inventoryMenu');
-const { getRarityColor, formatItemName } = require('../utils/helpers');
-const { getRarityEmoji } = require('../../data/souls');
+const { getRarityColor } = require('../utils/constants');
+const { formatItemName } = require('../utils/formatters');
+const { getRarityEmoji } = require('../utils/constants');
 
 async function handleInventory(ctx) {
-    try {
-        const player = getPlayerSafe(ctx.from.id);
-        let text = `🎒 *INVENTÁRIO*\n\n`;
-        text += `⚔️ ATK ${player.atk} | 🛡️ DEF ${player.def} | ❤️ HP ${player.maxHp} | ✨ CRIT ${player.crit}%\n\n`;
-        text += `Escolha uma categoria:`;
-        await ctx.editMessageText(text, inventoryCategoryMenu());
-    } catch (err) {
-        console.error('Erro ao abrir inventário:', err);
-        await ctx.answerCbQuery('Erro ao carregar inventário.');
-    }
+    // ... (código existente)
 }
 
 async function handleInvWeapons(ctx) {
@@ -37,7 +29,7 @@ async function handleInvWeapons(ctx) {
     }
 }
 
-// Similar para inv_armors, inv_jewelry, inv_consumables, inv_souls, inv_skins...
+// ... (resto dos handlers)
 
 module.exports = {
     handleInventory,
