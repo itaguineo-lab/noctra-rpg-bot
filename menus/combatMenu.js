@@ -1,5 +1,4 @@
 const { Markup } = require('telegraf');
-
 function combatMenu() {
     return Markup.inlineKeyboard([
         [Markup.button.callback('⚔️ Atacar', 'combat_attack')],
@@ -8,7 +7,6 @@ function combatMenu() {
         [Markup.button.callback('🏃 Fugir', 'combat_flee')]
     ]);
 }
-
 function consumablesMenu() {
     return Markup.inlineKeyboard([
         [Markup.button.callback('💚 Poção de Vida', 'use_potion_hp')],
@@ -19,20 +17,17 @@ function consumablesMenu() {
         [Markup.button.callback('◀️ Voltar', 'combat_back')]
     ]);
 }
-
 function soulsMenu(fight, canUseSoul) {
     const buttons = [];
     if (fight.player.souls) {
         for (const soul of fight.player.souls) {
             if (soul) {
-                const canUse = canUseSoul(fight, soul);
-                const status = canUse ? '🟢' : '⏳';
-                buttons.push([Markup.button.callback(`${status} ${soul.name}`, `use_soul_${soul.id}`)]);
+                const can = canUseSoul(fight, soul);
+                buttons.push([Markup.button.callback(`${can ? '🟢' : '⏳'} ${soul.name}`, `use_soul_${soul.id}`)]);
             }
         }
     }
     buttons.push([Markup.button.callback('◀️ Voltar', 'combat_back')]);
     return Markup.inlineKeyboard(buttons);
 }
-
 module.exports = { combatMenu, consumablesMenu, soulsMenu };
