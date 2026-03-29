@@ -1,16 +1,19 @@
 const { getPlayer, savePlayer } = require('../../data/players');
 const { maps, getMapByName } = require('../../data/maps');
 const { Markup } = require('telegraf');
+const { mainMenu } = require('../menus/mainMenu');
 
 async function handleTravel(ctx) {
     try {
         const player = getPlayer(ctx.from.id);
         let text = `🗺️ *Escolha seu destino:*\n\n`;
         const keyboard = [];
+
         for (const map of maps) {
             const isUnlocked = player.level >= map.level;
             const status = isUnlocked ? '✅' : '🔒';
             const btnText = `${status} ${map.name} (Lv ${map.level})`;
+            
             if (isUnlocked) {
                 keyboard.push([Markup.button.callback(btnText, `travel_to_${map.name}`)]);
             } else {
@@ -31,13 +34,15 @@ async function handleTravelTo(ctx) {
         const mapName = ctx.match[1];
         const player = getPlayer(ctx.from.id);
         const map = getMapByName(mapName);
+
         if (!map) return ctx.answerCbQuery('Mapa inválido!');
         if (player.level < map.level) {
-            return ctx.answerCbQuery(`Você precisa ser nível ${map.level} para ir para ${mapName}.`);
+            return ctx.answerCbQuery(`Você precisa ser nível ${map.level} para ir para ${mapName}.`, true);
         }
+
         player.currentMap = mapName;
         savePlayer(ctx.from.id, player);
-        const { mainMenu } = require('../menus/mainMenu');
+
         await ctx.editMessageText(`🗺️ Você viajou para *${mapName}*.`, { parse_mode: 'Markdown', ...mainMenu() });
     } catch (err) {
         console.error('Erro ao viajar:', err);
