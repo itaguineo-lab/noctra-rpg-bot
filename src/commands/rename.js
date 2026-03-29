@@ -1,4 +1,4 @@
-const { getPlayer, savePlayer } = require('../../data/players');
+const { getPlayer, savePlayer } = require('../data/players');
 
 async function handleRename(ctx) {
     const args = ctx.message.text.split(' ');
