@@ -2,45 +2,58 @@ const { getPlayer, savePlayer, recalculateStats } = require('../../data/players'
 
 async function handleEquip(ctx) {
     try {
-        const itemId = parseFloat(ctx.match[1]);
+        // Captura o ID do item do comando (ex: /equip_12345)
+        const itemId = ctx.match ? ctx.match[1] : ctx.message.text.split('_')[1];
         const player = getPlayer(ctx.from.id);
-        const item = player.inventory.find(i => i && i.id == itemId);
-        if (!item) return ctx.reply('Item não encontrado.');
+        
+        const itemIndex = player.inventory.findIndex(i => i && i.id == itemId);
+        if (itemIndex === -1) return ctx.reply('❌ Item não encontrado no seu inventário.');
 
-        const current = player.equipment[item.slot];
-        if (current) {
-            player.inventory.push(current);
+        const item = player.inventory[itemIndex];
+        const currentEquip = player.equipment[item.slot];
+
+        // Se já tiver algo equipado, volta para o inventário
+        if (currentEquip) {
+            player.inventory.push(currentEquip);
         }
+
+        // Equipa o novo item e remove do inventário
         player.equipment[item.slot] = item;
-        player.inventory = player.inventory.filter(i => i && i.id != itemId);
+        player.inventory.splice(itemIndex, 1);
+
         recalculateStats(player);
         savePlayer(ctx.from.id, player);
-        ctx.reply(`✅ *Equipado:* ${item.name}`, { parse_mode: 'Markdown' });
+
+        await ctx.reply(`⚔️ *Equipado:* ${item.name}`, { parse_mode: 'Markdown' });
     } catch (err) {
         console.error('Erro ao equipar:', err);
-        ctx.reply('Erro ao equipar item.');
+        await ctx.reply('Houve um erro ao tentar equipar este item.');
     }
 }
 
 async function handleEquipSoul(ctx) {
     try {
-        const soulId = parseFloat(ctx.match[1]);
+        const soulId = ctx.match ? ctx.match[1] : ctx.message.text.split('_')[1];
         const player = getPlayer(ctx.from.id);
-        const soul = player.inventory.find(i => i && i.id == soulId && i.type === 'soul');
-        if (!soul) return ctx.reply('Alma não encontrada.');
         
+        const soulIndex = player.inventory.findIndex(i => i && i.id == soulId && i.type === 'soul');
+        if (soulIndex === -1) return ctx.reply('❌ Alma não encontrada no seu inventário.');
+        
+        const soul = player.inventory[soulIndex];
         const emptySlot = player.souls.findIndex(s => s === null);
+
         if (emptySlot === -1) {
-            return ctx.reply('❌ Você já tem 2 almas equipadas! Desequipe uma primeiro.');
+            return ctx.reply('❌ Seus slots de almas estão cheios! Desequipe uma primeiro.');
         }
         
         player.souls[emptySlot] = soul;
-        player.inventory = player.inventory.filter(i => i && i.id != soulId);
+        player.inventory.splice(soulIndex, 1);
+        
         savePlayer(ctx.from.id, player);
-        ctx.reply(`✅ *Alma equipada:* ${soul.name}`, { parse_mode: 'Markdown' });
+        await ctx.reply(`💀 *Alma equipada:* ${soul.name}`, { parse_mode: 'Markdown' });
     } catch (err) {
         console.error('Erro ao equipar alma:', err);
-        ctx.reply('Erro ao equipar alma.');
+        await ctx.reply('Houve um erro ao tentar equipar esta alma.');
     }
 }
 
