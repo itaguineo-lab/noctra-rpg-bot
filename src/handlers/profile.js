@@ -1,10 +1,11 @@
-const { getPlayerSafe, formatItemName, getMainMenuText } = require('../utils/helpers');
-const { getRarityEmoji } = require('../../data/souls');
-const { progressBar, formatNumber } = require('../../utils');
+const { getPlayerSafe, getMainMenuText } = require('../utils/helpers');
+const { formatItemName } = require('../utils/formatters');
+const { getRarityEmoji, SLOT_EMOJIS } = require('../utils/constants');
+const { progressBar, formatNumber } = require('../utils/formatters');
 const { xpToNext } = require('../../data/level');
 const { getMap } = require('../../data/maps');
 const { Markup } = require('telegraf');
-const { SLOT_EMOJIS } = require('../utils/constants');
+const { mainMenu } = require('../menus/mainMenu');
 
 async function handleProfile(ctx) {
     try {
@@ -62,7 +63,6 @@ async function handleProfile(ctx) {
             [Markup.button.callback('◀️ Voltar', 'menu')]
         ];
         
-        const { mainMenu } = require('../menus/mainMenu');
         await ctx.editMessageText(profileMsg, { parse_mode: 'Markdown', ...Markup.inlineKeyboard(keyboard) });
     } catch (err) {
         console.error('Erro no perfil:', err);
