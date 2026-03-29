@@ -4,7 +4,7 @@ const maps = [
         level: 1,
         enemies: [
             { name: "Lobo Sombrio", hp: 80, atk: 12, def: 5, exp: 20, gold: 15, minLevel: 1 },
-            { name: "Rato Gigante", hp: 60, atk: 10, def: 3, exp: 15, gold: 10, minLevel: 1 }
+            { name: "Rato Gigante", hp: 60, atk: 10, def: 3, exp: 150, gold: 10, minLevel: 1 }
         ]
     },
     {
