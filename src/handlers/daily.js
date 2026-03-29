@@ -1,5 +1,5 @@
 const { getPlayerUpdated, getMainMenuText } = require('../utils/helpers');
-const { giveDailyChest, savePlayer } = require('../../data/players'); // Adicionado savePlayer
+const { giveDailyChest, savePlayer } = require('../data/players'); // Adicionado savePlayer
 const { mainMenu } = require('../menus/mainMenu');
 
 async function handleDaily(ctx) {
