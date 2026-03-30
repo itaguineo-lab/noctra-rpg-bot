@@ -45,10 +45,10 @@ async function finishFight(ctx, fight) {
     const player = getPlayer(ctx.from.id);
 
     if (fight.status === 'win') {
-        const rewards = fight.rewards || { xp: 0, nox: 0 };
+        const rewards = fight.rewards || { xp: 0, gold: 0 };
 
         player.xp += rewards.xp || 0;
-        player.nox = (player.nox || 0) + (rewards.nox || 0);
+        player.gold = (player.gold || 0) + (rewards.gold || 0);
 
         addXp(player, 0); // força checagem de level up usando o estado atual
 
@@ -62,7 +62,7 @@ async function finishFight(ctx, fight) {
         return safeEdit(
             ctx,
             `🏆 *Vitória!*\n\n${fight.logs.join('\n')}\n\n` +
-            `+${rewards.xp || 0} XP\n+${rewards.nox || 0} Nox`,
+            `+${rewards.xp || 0} XP\n+${rewards.gold || 0} Ouro`,
             {
                 parse_mode: 'Markdown',
                 ...combatMenu()
