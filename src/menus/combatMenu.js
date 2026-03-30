@@ -45,113 +45,28 @@ function combatMenu(fight = null) {
     ]);
 }
 
-function consumablesMenu(player = null) {
-    const inventory = player?.inventory || [];
-
-    const hasHpPotion = inventory.some(
-        item => item?.id === 'potion_hp'
-    );
-
-    const hasEnergyPotion = inventory.some(
-        item => item?.id === 'potion_energy'
-    );
-
+function postCombatMenu() {
     return Markup.inlineKeyboard([
         [
             Markup.button.callback(
-                hasHpPotion
-                    ? '❤️ Poção HP'
-                    : '❌ Sem HP',
-                'use_potion_hp'
-            ),
-            Markup.button.callback(
-                hasEnergyPotion
-                    ? '⚡ Energia'
-                    : '❌ Sem Energia',
-                'use_potion_energy'
+                '⚔️ Caçar Novamente',
+                'hunt'
             )
         ],
         [
             Markup.button.callback(
-                '💪 Tônico Atk',
-                'use_tonic_strength'
+                '🎒 Inventário',
+                'inventory'
             ),
             Markup.button.callback(
-                '🛡️ Tônico Def',
-                'use_tonic_defense'
-            )
-        ],
-        [
-            Markup.button.callback(
-                '◀️ Voltar',
-                'combat_back'
+                '🗺️ Menu',
+                'menu'
             )
         ]
     ]);
 }
 
-function soulsMenu(fight) {
-    const buttons = [];
-
-    const souls = fight?.player?.souls || [];
-
-    if (!souls.length) {
-        return Markup.inlineKeyboard([
-            [
-                Markup.button.callback(
-                    '❌ Sem almas',
-                    'combat_void'
-                )
-            ],
-            [
-                Markup.button.callback(
-                    '◀️ Voltar',
-                    'combat_back'
-                )
-            ]
-        ]);
-    }
-
-    souls.forEach((soul, index) => {
-        if (!soul) {
-            buttons.push([
-                Markup.button.callback(
-                    '❌ Slot vazio',
-                    'combat_void'
-                )
-            ]);
-            return;
-        }
-
-        const ready =
-            soul.ready !== false &&
-            !soul.cooldown;
-
-        const status = ready ? '🟢' : '⏳';
-
-        const label =
-            `${status} ${soul.emoji || '💀'} ${soul.name}`;
-
-        buttons.push([
-            Markup.button.callback(
-                label,
-                `use_soul_${index}`
-            )
-        ]);
-    });
-
-    buttons.push([
-        Markup.button.callback(
-            '◀️ Voltar',
-            'combat_back'
-        )
-    ]);
-
-    return Markup.inlineKeyboard(buttons);
-}
-
 module.exports = {
     combatMenu,
-    consumablesMenu,
-    soulsMenu
+    postCombatMenu
 };
