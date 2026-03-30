@@ -134,4 +134,99 @@ async function finishFight(ctx, fight) {
 }
 
 async function handleHunt(ctx) {
-    const player =
+    const player = getPlayer(ctx.from.id);
+
+    if (!player) {
+        return ctx.reply('❌ Perfil não encontrado.');
+    }
+
+    if (activeFights.has(ctx.from.id)) {
+        const fight = activeFights.get(ctx.from.id);
+
+        return safeEdit(
+            ctx,
+            renderFightText(fight),
+            {
+                parse_mode: 'Markdown',
+                ...combatMenu()
+            }
+        );
+    }
+
+    const enemy = getRandomEnemy(player.level || 1);
+
+    const fight = createFight(player, enemy);
+
+    activeFights.set(ctx.from.id, fight);
+
+    return ctx.reply(
+        renderFightText(fight),
+        {
+            parse_mode: 'Markdown',
+            ...combatMenu()
+        }
+    );
+}
+
+async function handleAttack(ctx) {
+    const fight = activeFights.get(ctx.from.id);
+
+    if (!fight) {
+        return ctx.answerCbQuery('Nenhum combate ativo.');
+    }
+
+    processPlayerTurn(fight);
+
+    if (fight.status === 'ongoing') {
+        processEnemyTurn(fight);
+    }
+
+    if (fight.status !== 'ongoing') {
+        return finishFight(ctx, fight);
+    }
+
+    return safeEdit(
+        ctx,
+        renderFightText(fight),
+        {
+            parse_mode: 'Markdown',
+            ...combatMenu()
+        }
+    );
+}
+
+async function handleFlee(ctx) {
+    const fight = activeFights.get(ctx.from.id);
+
+    if (!fight) {
+        return ctx.answerCbQuery('Nenhum combate ativo.');
+    }
+
+    attemptFlee(fight);
+
+    if (fight.status !== 'ongoing') {
+        return finishFight(ctx, fight);
+    }
+
+    processEnemyTurn(fight);
+
+    if (fight.status !== 'ongoing') {
+        return finishFight(ctx, fight);
+    }
+
+    return safeEdit(
+        ctx,
+        renderFightText(fight),
+        {
+            parse_mode: 'Markdown',
+            ...combatMenu()
+        }
+    );
+}
+
+module.exports = {
+    handleHunt,
+    handleAttack,
+    handleFlee,
+    activeFights
+};
