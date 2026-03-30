@@ -1,45 +1,101 @@
+function ensureEnergyFields(player) {
+    if (!player || typeof player !== 'object') {
+        throw new Error('Player inválido.');
+    }
 
-const { savePlayer } = require('../data/players');
+    if (typeof player.maxEnergy !== 'number') {
+        player.maxEnergy = player.vip ? 40 : 20;
+    }
 
-/**
- * Calcula e aplica a regeneração de energia baseada no tempo decorrido.
- * @param {Object} player - O objeto do jogador.
- * @returns {boolean} - Retorna verdadeiro se houve alguma alteração.
- */
+    if (typeof player.energy !== 'number') {
+        player.energy = player.maxEnergy;
+    }
+
+    if (!player.lastEnergyUpdate) {
+        player.lastEnergyUpdate = Date.now();
+    }
+
+    return player;
+}
+
+function getRegenInterval(player) {
+    return player.vip
+        ? 3 * 60 * 1000
+        : 6 * 60 * 1000;
+}
+
 function updateEnergy(player) {
+    ensureEnergyFields(player);
+
     const now = Date.now();
-    const lastUpdate = player.lastEnergyUpdate || now;
-    
-    // VIP regenera em 3 min (180000ms), Normal em 6 min (360000ms)
-    const regenInterval = player.vip ? 3 * 60 * 1000 : 6 * 60 * 1000;
-    const elapsed = now - lastUpdate;
+    const interval = getRegenInterval(player);
 
-    if (elapsed >= regenInterval) {
-        const energyToRegen = Math.floor(elapsed / regenInterval);
-        
-        if (player.energy < player.maxEnergy) {
-            player.energy = Math.min(player.maxEnergy, player.energy + energyToRegen);
-            // Atualiza o timestamp apenas pelo tempo "consumido" pela regeneração
-            player.lastEnergyUpdate = lastUpdate + (energyToRegen * regenInterval);
-            return true;
-        }
+    const elapsed =
+        now - player.lastEnergyUpdate;
+
+    if (elapsed < interval) {
+        return false;
     }
-    return false;
+
+    const amount = Math.floor(
+        elapsed / interval
+    );
+
+    if (player.energy >= player.maxEnergy) {
+        player.lastEnergyUpdate = now;
+        return false;
+    }
+
+    player.energy = Math.min(
+        player.maxEnergy,
+        player.energy + amount
+    );
+
+    player.lastEnergyUpdate +=
+        amount * interval;
+
+    return true;
 }
 
-/**
- * Consome energia do jogador para uma ação.
- */
-function consumeEnergy(player, amount) {
-    if (player.energy >= amount) {
-        player.energy -= amount;
-        // Se o jogador estava com energia cheia, inicia o contador de regeneração agora
-        if (player.energy + amount === player.maxEnergy) {
-            player.lastEnergyUpdate = Date.now();
-        }
-        return true;
+function consumeEnergy(player, amount = 1) {
+    ensureEnergyFields(player);
+
+    const value = Number(amount) || 1;
+
+    if (player.energy < value) {
+        return false;
     }
-    return false;
+
+    const wasFull =
+        player.energy === player.maxEnergy;
+
+    player.energy -= value;
+
+    if (wasFull) {
+        player.lastEnergyUpdate = Date.now();
+    }
+
+    return true;
 }
 
-module.exports = { updateEnergy, consumeEnergy };
+function getTimeToNextEnergy(player) {
+    ensureEnergyFields(player);
+
+    if (player.energy >= player.maxEnergy) {
+        return 0;
+    }
+
+    const interval = getRegenInterval(player);
+
+    const elapsed =
+        Date.now() - player.lastEnergyUpdate;
+
+    return Math.max(0, interval - elapsed);
+}
+
+module.exports = {
+    updateEnergy,
+    consumeEnergy,
+    getTimeToNextEnergy,
+    getRegenInterval
+};
