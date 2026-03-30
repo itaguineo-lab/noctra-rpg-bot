@@ -10,12 +10,30 @@ const raridades = [
 ];
 
 const itemTypes = [
-    { slot: "weapon", namePrefix: "Espada", atkBase: 5, defBase: 0, critBase: 2, hpBase: 0 },
-    { slot: "armor", namePrefix: "Armadura", atkBase: 0, defBase: 5, critBase: 0, hpBase: 10 },
-    { slot: "helmet", namePrefix: "Elmo", atkBase: 0, defBase: 3, critBase: 0, hpBase: 5 },
-    { slot: "boots", namePrefix: "Botas", atkBase: 0, defBase: 2, critBase: 1, hpBase: 3 },
-    { slot: "ring", namePrefix: "Anel", atkBase: 2, defBase: 0, critBase: 3, hpBase: 0 },
-    { slot: "necklace", namePrefix: "Colar", atkBase: 1, defBase: 1, critBase: 1, hpBase: 5 }
+    {
+        slot: 'weapon',
+        namePrefix: 'Espada',
+        atkBase: 5,
+        defBase: 0,
+        critBase: 2,
+        hpBase: 0
+    },
+    {
+        slot: 'armor',
+        namePrefix: 'Armadura',
+        atkBase: 0,
+        defBase: 5,
+        critBase: 0,
+        hpBase: 10
+    },
+    {
+        slot: 'accessory',
+        namePrefix: 'Amuleto',
+        atkBase: 2,
+        defBase: 1,
+        critBase: 3,
+        hpBase: 5
+    }
 ];
 
 function getRarity() {
