@@ -1,12 +1,36 @@
-const { getPlayerSafe } = require('../utils/helpers');
+const { getPlayer } = require('../core/player/playerService');
 const { inventoryCategoryMenu } = require('../menus/inventoryMenu');
-const { getRarityEmoji } = require('../utils/constants');
+
+function getRarityEmoji(rarity) {
+    const map = {
+        Comum: '⚪',
+        Incomum: '🟢',
+        Raro: '🔵',
+        Épico: '🟣',
+        Lendário: '🟡',
+        Mítico: '🔴'
+    };
+
+    return map[rarity] || '⚪';
+}
+
+async function safeEdit(ctx, text, options = {}) {
+    try {
+        await ctx.editMessageText(text, options);
+    } catch (error) {
+        await ctx.reply(text, options);
+    }
+}
 
 async function handleInventory(ctx) {
-    await ctx.editMessageText('🎒 *Seu Inventário*\nEscolha uma categoria:', { 
-        parse_mode: 'Markdown', 
-        ...inventoryCategoryMenu() 
-    });
+    await safeEdit(
+        ctx,
+        '🎒 *Seu Inventário*\n\nEscolha uma categoria:',
+        {
+            parse_mode: 'Markdown',
+            ...inventoryCategoryMenu()
+        }
+    );
 }
 
 async function handleInvWeapons(ctx) {
@@ -23,42 +47,125 @@ async function handleInvJewelry(ctx) {
 
 async function handleInvConsumables(ctx) {
     try {
-        const player = getPlayerSafe(ctx.from.id);
-        const cons = player.consumables || {};
-        let text = `🧪 *CONSUMÍVEIS*\n\n`;
-        text += `❤️ Poções HP: ${cons.potionHp || 0}\n`;
-        text += `⚡ Poções Energia: ${cons.potionEnergy || 0}\n`;
-        text += `💪 Tônicos Atk: ${cons.tonicStrength || 0}\n`;
-        
-        await ctx.editMessageText(text, { parse_mode: 'Markdown', ...inventoryCategoryMenu() });
-    } catch (err) {
-        await ctx.answerCbQuery('Erro ao carregar consumíveis.');
+        const player = getPlayer(ctx.from.id);
+
+        const inventory = player.inventory || [];
+
+        const hpPotions = inventory.filter(
+            item => item?.id === 'potion_hp'
+        ).length;
+
+        const energyPotions = inventory.filter(
+            item => item?.id === 'potion_energy'
+        ).length;
+
+        const tonics = inventory.filter(
+            item => item?.id === 'tonic_strength'
+        ).length;
+
+        const text =
+            `🧪 *CONSUMÍVEIS*\n\n` +
+            `❤️ Poções HP: ${hpPotions}\n` +
+            `⚡ Poções Energia: ${energyPotions}\n` +
+            `💪 Tônicos Atk: ${tonics}`;
+
+        await safeEdit(ctx, text, {
+            parse_mode: 'Markdown',
+            ...inventoryCategoryMenu()
+        });
+    } catch (error) {
+        console.error('Erro ao carregar consumíveis:', error);
+        await ctx.answerCbQuery(
+            'Erro ao carregar consumíveis.'
+        );
+    }
+}
+
+async function handleInvSouls(ctx) {
+    try {
+        const player = getPlayer(ctx.from.id);
+
+        const souls = player.souls || [];
+
+        let text = `💀 *ALMAS* (${souls.length})\n\n`;
+
+        if (!souls.length) {
+            text += 'Nenhuma alma obtida.';
+        } else {
+            souls.forEach((soul, index) => {
+                if (!soul) return;
+
+                text +=
+                    `${getRarityEmoji(soul.rarity)} ` +
+                    `${soul.emoji || '💀'} ` +
+                    `*${soul.name}*\n`;
+
+                text +=
+                    `Slot ${index + 1}\n\n`;
+            });
+        }
+
+        await safeEdit(ctx, text, {
+            parse_mode: 'Markdown',
+            ...inventoryCategoryMenu()
+        });
+    } catch (error) {
+        console.error('Erro ao carregar almas:', error);
+        await ctx.answerCbQuery(
+            'Erro ao carregar almas.'
+        );
     }
 }
 
 async function renderCategory(ctx, slot, title) {
     try {
-        const player = getPlayerSafe(ctx.from.id);
-        const items = (player.inventory || []).filter(i => i && i.slot === slot);
+        const player = getPlayer(ctx.from.id);
+
+        const items = (player.inventory || []).filter(
+            item => item && item.slot === slot
+        );
+
         let text = `*${title}* (${items.length})\n\n`;
-        
-        if (items.length === 0) {
+
+        if (!items.length) {
             text += 'Nenhum item nesta categoria.';
         } else {
-            items.forEach(w => {
-                text += `${getRarityEmoji(w.rarity)} *${w.name}*\n`;
-                text += `   ⚔️ +${w.atk || 0} | 🛡️ +${w.def || 0} | ✨ +${w.crit || 0}%\n`;
-                text += `   /equip_${w.id}\n\n`;
+            items.forEach(item => {
+                text +=
+                    `${getRarityEmoji(item.rarity)} ` +
+                    `*${item.name}*\n`;
+
+                text +=
+                    `⚔️ +${item.atk || 0} | ` +
+                    `🛡️ +${item.def || 0} | ` +
+                    `✨ +${item.crit || 0}%\n`;
+
+                text +=
+                    `🆔 ${item.id}\n\n`;
             });
         }
-        await ctx.editMessageText(text, { parse_mode: 'Markdown', ...inventoryCategoryMenu() });
-    } catch (err) {
-        console.error(`Erro ao listar ${title}:`, err);
-        await ctx.answerCbQuery('Erro ao carregar itens.');
+
+        await safeEdit(ctx, text, {
+            parse_mode: 'Markdown',
+            ...inventoryCategoryMenu()
+        });
+    } catch (error) {
+        console.error(
+            `Erro ao listar ${title}:`,
+            error
+        );
+
+        await ctx.answerCbQuery(
+            'Erro ao carregar itens.'
+        );
     }
 }
 
-module.exports = { 
-    handleInventory, handleInvWeapons, handleInvArmors, 
-    handleInvJewelry, handleInvConsumables 
+module.exports = {
+    handleInventory,
+    handleInvWeapons,
+    handleInvArmors,
+    handleInvJewelry,
+    handleInvConsumables,
+    handleInvSouls
 };
