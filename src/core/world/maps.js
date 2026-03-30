@@ -1,47 +1,67 @@
 /**
  * Configuração dos mapas do jogo.
+ * Use sempre `id` como referência interna.
  */
+
 const maps = [
-    { 
-        name: "Clareira Sombria", 
-        level: 1, 
-        description: "Um local denso onde a luz raramente toca o chão.",
-        emoji: "🌲"
+    {
+        id: 'clareira_sombria',
+        name: 'Clareira Sombria',
+        levelReq: 1,
+        description: 'Um local denso onde a luz raramente toca o chão.',
+        emoji: '🌲'
     },
-    { 
-        name: "Cripta em Ruínas", 
-        level: 8, 
-        description: "Onde os mortos não descansam em paz.",
-        emoji: "⚰️"
+    {
+        id: 'cripta_em_ruinas',
+        name: 'Cripta em Ruínas',
+        levelReq: 8,
+        description: 'Onde os mortos não descansam em paz.',
+        emoji: '⚰️'
     },
-    { 
-        name: "Pântano Corrompido", 
-        level: 15, 
-        description: "Águas paradas que escondem criaturas venenosas.",
-        emoji: "🍄"
+    {
+        id: 'pantano_corrompido',
+        name: 'Pântano Corrompido',
+        levelReq: 15,
+        description: 'Águas paradas que escondem criaturas venenosas.',
+        emoji: '🍄'
     },
-    { 
-        name: "Deserto Incandescente", 
-        level: 24, 
-        description: "O calor é tão mortal quanto os escorpiões.",
-        emoji: "🏜️"
+    {
+        id: 'deserto_incandescente',
+        name: 'Deserto Incandescente',
+        levelReq: 24,
+        description: 'O calor é tão mortal quanto os escorpiões.',
+        emoji: '🏜️'
     }
 ];
 
-/**
- * Busca um mapa pelo nome.
- */
+function getMapById(id) {
+    return maps.find(map => map.id === id) || null;
+}
+
 function getMapByName(name) {
-    return maps.find(m => m.name === name);
+    return maps.find(map => map.name === name) || null;
 }
 
-/**
- * Valida se o jogador tem nível suficiente para entrar no mapa.
- */
-function canPlayerEnter(player, mapName) {
-    const map = getMapByName(mapName);
-    if (!map) return false;
-    return player.level >= map.level;
+function getStartingMap() {
+    return maps[0];
 }
 
-module.exports = { maps, getMapByName, canPlayerEnter };
+function canPlayerEnter(player, mapId) {
+    const map = getMapById(mapId);
+    if (!map || !player) return false;
+
+    return (player.level || 1) >= map.levelReq;
+}
+
+function getAvailableMaps(playerLevel = 1) {
+    return maps.filter(map => playerLevel >= map.levelReq);
+}
+
+module.exports = {
+    maps,
+    getMapById,
+    getMapByName,
+    getStartingMap,
+    canPlayerEnter,
+    getAvailableMaps
+};
