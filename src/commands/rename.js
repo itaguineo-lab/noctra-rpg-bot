@@ -1,37 +1,112 @@
-const { getPlayer, savePlayer } = require('../data/players');
+const {
+    getPlayer,
+    savePlayer
+} = require('../core/player/playerService');
+
+function sanitizeName(name) {
+    return name
+        .trim()
+        .replace(/\s+/g, ' ');
+}
 
 async function handleRename(ctx) {
-    const args = ctx.message.text.split(' ');
-    
-    if (args.length < 2) {
-        return ctx.reply('📝 *Uso:* /rename [seu novo nome]', { parse_mode: 'Markdown' });
-    }
-
-    const newName = args.slice(1).join(' ');
-    if (newName.length > 20) return ctx.reply('❌ O nome deve ter no máximo 20 caracteres.');
-
     try {
-        const player = getPlayer(ctx.from.id);
-        
-        if (!player.renamed) {
-            player.renamed = true;
-            player.name = newName;
-            savePlayer(ctx.from.id, player);
-            await ctx.reply(`✅ Nome alterado para *"${newName}"*!\n(Primeira troca gratuita)`);
-        } else {
-            if (player.nox >= 100) {
-                player.nox -= 100;
-                player.name = newName;
-                savePlayer(ctx.from.id, player);
-                await ctx.reply(`✅ Nome alterado para *"${newName}"*!\nCusto: 💎 100 Nox.`);
-            } else {
-                await ctx.reply('❌ Você não tem 💎 100 Nox para renomear seu personagem.');
-            }
+        const args =
+            ctx.message.text.split(' ');
+
+        if (args.length < 2) {
+            return ctx.reply(
+                '📝 Uso: /rename novo_nome'
+            );
         }
-    } catch (err) {
-        console.error('Erro no comando rename:', err);
-        await ctx.reply('Erro ao tentar renomear seu personagem.');
+
+        const newName =
+            sanitizeName(
+                args
+                    .slice(1)
+                    .join(' ')
+            );
+
+        if (
+            newName.length < 3
+        ) {
+            return ctx.reply(
+                '❌ Nome muito curto.'
+            );
+        }
+
+        if (
+            newName.length > 20
+        ) {
+            return ctx.reply(
+                '❌ Máximo 20 caracteres.'
+            );
+        }
+
+        const player =
+            getPlayer(
+                ctx.from.id
+            );
+
+        const firstFree =
+            !player.renamed;
+
+        if (firstFree) {
+            player.renamed =
+                true;
+            player.name =
+                newName;
+
+            savePlayer(
+                ctx.from.id,
+                player
+            );
+
+            return ctx.reply(
+                `✅ Nome alterado para *${newName}*!\nPrimeira troca gratuita.`,
+                {
+                    parse_mode:
+                        'Markdown'
+                }
+            );
+        }
+
+        if (
+            (player.nox || 0) <
+            100
+        ) {
+            return ctx.reply(
+                '❌ Você precisa de 💎 100 Nox.'
+            );
+        }
+
+        player.nox -= 100;
+        player.name = newName;
+
+        savePlayer(
+            ctx.from.id,
+            player
+        );
+
+        await ctx.reply(
+            `✅ Nome alterado para *${newName}*!\nCusto: 💎 100 Nox.`,
+            {
+                parse_mode:
+                    'Markdown'
+            }
+        );
+    } catch (error) {
+        console.error(
+            'Erro rename:',
+            error
+        );
+
+        await ctx.reply(
+            '❌ Erro ao renomear.'
+        );
     }
 }
 
-module.exports = { handleRename };
+module.exports = {
+    handleRename
+};
