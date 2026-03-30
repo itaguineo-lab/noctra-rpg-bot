@@ -7,11 +7,25 @@ const { getRarityColor } = require('../data/constants');
  * @param {number} size Tamanho da barra (caracteres)
  */
 function progressBar(current, max, size = 10) {
-    const percentage = Math.min(Math.max(current / max, 0), 1);
-    const filledSize = Math.round(size * percentage);
-    const emptySize = size - filledSize;
-    
-    return '🟩'.repeat(filledSize) + '⬜'.repeat(emptySize);
+    const safeMax =
+        max > 0 ? max : 1;
+
+    const percentage = Math.min(
+        Math.max(current / safeMax, 0),
+        1
+    );
+
+    const filledSize = Math.round(
+        size * percentage
+    );
+
+    const emptySize =
+        size - filledSize;
+
+    return (
+        '🟩'.repeat(filledSize) +
+        '⬜'.repeat(emptySize)
+    );
 }
 
 /**
