@@ -1,33 +1,53 @@
 /**
- * Gerencia a moeda premium NOX
+ * Gerencia a moeda premium Nox.
  */
 
-/**
- * Adiciona Nox ao jogador (via compra real ou recompensa de evento)
- */
+function ensureNoxBalance(player) {
+    if (!player || typeof player !== 'object') {
+        throw new Error('Player inválido.');
+    }
+
+    if (typeof player.nox !== 'number' || Number.isNaN(player.nox)) {
+        player.nox = 0;
+    }
+
+    return player;
+}
+
 function addNox(player, amount) {
-    if (amount <= 0) return false;
-    player.nox += Math.floor(amount);
+    ensureNoxBalance(player);
+
+    const value = Math.floor(Number(amount) || 0);
+    if (value <= 0) return false;
+
+    player.nox += value;
     return true;
 }
 
-/**
- * Tenta remover Nox do jogador para uma compra
- */
 function spendNox(player, amount) {
-    if (player.nox >= amount) {
-        player.nox -= amount;
-        return true;
+    ensureNoxBalance(player);
+
+    const value = Math.floor(Number(amount) || 0);
+    if (value <= 0) return false;
+
+    if (player.nox < value) {
+        return false;
     }
-    return false;
+
+    player.nox -= value;
+    return true;
 }
 
-/**
- * Verifica se o jogador é VIP e se o bônus de Nox deve ser aplicado
- */
-function getVipNoxBonus(baseAmount) {
-    // Exemplo: VIPs ganham 20% a mais de Nox em eventos
-    return Math.floor(baseAmount * 1.2);
+function getVipNoxBonus(baseAmount, isVip = false, multiplier = 1.2) {
+    const value = Math.floor(Number(baseAmount) || 0);
+    if (value <= 0) return 0;
+
+    return isVip ? Math.floor(value * multiplier) : value;
 }
 
-module.exports = { addNox, spendNox, getVipNoxBonus };
+module.exports = {
+    ensureNoxBalance,
+    addNox,
+    spendNox,
+    getVipNoxBonus
+};
