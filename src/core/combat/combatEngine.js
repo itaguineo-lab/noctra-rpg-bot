@@ -64,7 +64,7 @@ function processPlayerTurn(fight) {
 
         fight.rewards = {
             xp: fight.enemy.xp,
-            nox: fight.enemy.gold
+            gold: fight.enemy.gold
         };
 
         fight.logs.push(
