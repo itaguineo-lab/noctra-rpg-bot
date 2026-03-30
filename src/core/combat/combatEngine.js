@@ -1,9 +1,9 @@
-
 const { calculateDamage } = require('./damageCalc');
 
-/**
- * Inicia uma estrutura de combate limpa
- */
+function trimLogs(logs, max = 8) {
+    return logs.slice(-max);
+}
+
 function createFight(player, enemy) {
     return {
         player: {
@@ -14,81 +14,154 @@ function createFight(player, enemy) {
             atk: player.atk,
             def: player.def,
             crit: player.crit || 5,
-            souls: player.souls || [null, null]
+            souls: player.souls || [],
+            shield: 0,
+            shieldDuration: 0
         },
+
         enemy: {
+            id: enemy.id || enemy.name,
             name: enemy.name,
             hp: enemy.hp,
             maxHp: enemy.hp,
             atk: enemy.atk,
             def: enemy.def,
+            crit: enemy.crit || 5,
             level: enemy.level || 1,
-            gold: enemy.gold,
-            xp: enemy.xp
+            xp: enemy.xp || 0,
+            gold: enemy.gold || 0,
+            frozen: false
         },
+
         turn: 1,
-        logs: [`⚔️ Um ${enemy.name} selvagem apareceu!`],
-        status: 'active' // active, win, loss, fled
+        status: 'active',
+        rewards: null,
+        logs: [`⚔️ Um ${enemy.name} surgiu das sombras!`]
     };
 }
 
-/**
- * Executa o turno do Jogador
- */
 function processPlayerTurn(fight) {
-    const result = calculateDamage(fight.player.atk, fight.enemy.def, fight.player.crit);
-    fight.enemy.hp = Math.max(0, fight.enemy.hp - result.damage);
-    
-    let log = `🗡️ Causaste *${result.damage}* de dano!`;
-    if (result.isCrit) log = `💥 *CRÍTICO!* ` + log;
-    
-    fight.logs.push(log);
+    if (fight.status !== 'active') return null;
+
+    const result = calculateDamage(
+        fight.player,
+        fight.enemy
+    );
+
+    fight.enemy.hp = Math.max(
+        0,
+        fight.enemy.hp - result.damage
+    );
+
+    fight.logs.push(
+        result.isCrit
+            ? `💥 CRÍTICO! Causaste *${result.damage}* dano!`
+            : `🗡️ Causaste *${result.damage}* dano!`
+    );
 
     if (fight.enemy.hp <= 0) {
         fight.status = 'win';
-        fight.logs.push(`💀 ${fight.enemy.name} foi derrotado!`);
+
+        fight.rewards = {
+            xp: fight.enemy.xp,
+            nox: fight.enemy.gold
+        };
+
+        fight.logs.push(
+            `💀 ${fight.enemy.name} foi derrotado!`
+        );
     }
-    
+
+    fight.logs = trimLogs(fight.logs);
+
     return result;
 }
 
-/**
- * Executa o turno do Inimigo
- */
 function processEnemyTurn(fight) {
     if (fight.status !== 'active') return null;
 
-    const result = calculateDamage(fight.enemy.atk, fight.player.def, 5);
-    fight.player.hp = Math.max(0, fight.player.hp - result.damage);
-    
-    fight.logs.push(`👹 ${fight.enemy.name} causou *${result.damage}* de dano!`);
+    if (fight.enemy.frozen) {
+        fight.enemy.frozen = false;
+
+        fight.logs.push(
+            `❄️ ${fight.enemy.name} está congelado!`
+        );
+
+        return null;
+    }
+
+    const result = calculateDamage(
+        fight.enemy,
+        fight.player
+    );
+
+    let damage = result.damage;
+
+    if (fight.player.shieldDuration > 0) {
+        damage = Math.floor(
+            damage * (1 - fight.player.shield)
+        );
+
+        fight.player.shieldDuration--;
+
+        if (fight.player.shieldDuration <= 0) {
+            fight.player.shield = 0;
+        }
+    }
+
+    fight.player.hp = Math.max(
+        0,
+        fight.player.hp - damage
+    );
+
+    fight.logs.push(
+        `👹 ${fight.enemy.name} causou *${damage}* dano!`
+    );
 
     if (fight.player.hp <= 0) {
         fight.status = 'loss';
-        fight.logs.push(`❌ Foste derrotado por ${fight.enemy.name}...`);
+
+        fight.logs.push(
+            `☠️ Foste derrotado por ${fight.enemy.name}...`
+        );
     }
 
     fight.turn++;
-    return result;
+    fight.logs = trimLogs(fight.logs);
+
+    return {
+        ...result,
+        damage
+    };
 }
 
-/**
- * Tenta fugir da batalha
- */
 function attemptFlee(fight) {
-    const success = Math.random() > 0.4; // 60% de chance de sucesso
+    if (fight.status !== 'active') return false;
+
+    const successChance = 0.6;
+
+    const success = Math.random() <= successChance;
+
     if (success) {
         fight.status = 'fled';
-        fight.logs.push(`🏃 Fugiste do combate com sucesso!`);
+
+        fight.logs.push(
+            `🏃 Fugiste com sucesso.`
+        );
     } else {
-        fight.logs.push(`🚫 Falhaste ao tentar fugir!`);
+        fight.logs.push(
+            `🚫 Não conseguiste fugir!`
+        );
     }
+
+    fight.logs = trimLogs(fight.logs);
+
     return success;
 }
 
-module.exports = { 
-    createFight, 
-    processPlayerTurn, 
-    processEnemyTurn, 
-    attemptFlee 
+module.exports = {
+    createFight,
+    processPlayerTurn,
+    processEnemyTurn,
+    attemptFlee
 };
