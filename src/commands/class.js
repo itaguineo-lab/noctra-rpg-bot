@@ -1,43 +1,104 @@
-const { getPlayer, savePlayer, recalculateStats } = require('../data/players');
-const { CLASSES } = require('../utils/constants');
+const {
+    getPlayer,
+    savePlayer,
+    recalculateStats
+} = require('../core/player/playerService');
+
+const ALLOWED_CLASSES = [
+    'guerreiro',
+    'arqueiro',
+    'mago'
+];
+
+function formatClassName(name) {
+    return (
+        name.charAt(0)
+            .toUpperCase() +
+        name.slice(1)
+    );
+}
 
 async function handleClass(ctx) {
-    const args = ctx.message.text.split(' ');
-    
-    if (args.length < 2) {
-        return ctx.reply('❓ *Como usar:* /class [guerreiro/arqueiro/mago]', { parse_mode: 'Markdown' });
-    }
-
-    const className = args[1].toLowerCase();
-    if (!CLASSES.includes(className)) {
-        return ctx.reply('❌ Classe inválida! Escolha entre: guerreiro, arqueiro ou mago.');
-    }
-
     try {
-        const player = getPlayer(ctx.from.id);
-        
-        // Verifica se é a primeira troca ou se tem Nox suficiente
-        if (!player.classChanged) {
-            player.classChanged = true;
-            player.class = className;
-            recalculateStats(player);
-            savePlayer(ctx.from.id, player);
-            await ctx.reply(`✨ Classe alterada para *${className.charAt(0).toUpperCase() + className.slice(1)}*!\n(Primeira troca gratuita realizada)`);
-        } else {
-            if (player.nox >= 500) {
-                player.nox -= 500;
-                player.class = className;
-                recalculateStats(player);
-                savePlayer(ctx.from.id, player);
-                await ctx.reply(`✅ Classe alterada para *${className.charAt(0).toUpperCase() + className.slice(1)}*!\nCusto: 💎 500 Nox.`);
-            } else {
-                await ctx.reply(`❌ Nox insuficientes! Você precisa de 💎 500 Nox para trocar de classe novamente.`);
-            }
+        const args =
+            ctx.message.text.split(' ');
+
+        if (args.length < 2) {
+            return ctx.reply(
+                '❓ Uso: /class guerreiro | arqueiro | mago'
+            );
         }
-    } catch (err) {
-        console.error('Erro ao trocar classe:', err);
-        await ctx.reply('Erro ao processar sua troca de classe.');
+
+        const className =
+            args[1].toLowerCase();
+
+        if (
+            !ALLOWED_CLASSES.includes(
+                className
+            )
+        ) {
+            return ctx.reply(
+                '❌ Classe inválida.'
+            );
+        }
+
+        const player =
+            getPlayer(
+                ctx.from.id
+            );
+
+        const firstFree =
+            !player.classChanged;
+
+        if (
+            !firstFree &&
+            (player.nox || 0) <
+                500
+        ) {
+            return ctx.reply(
+                '❌ Você precisa de 💎 500 Nox.'
+            );
+        }
+
+        if (!firstFree) {
+            player.nox -= 500;
+        }
+
+        player.class =
+            className;
+
+        player.classChanged =
+            true;
+
+        recalculateStats(player);
+
+        player.hp =
+            player.maxHp;
+
+        savePlayer(
+            ctx.from.id,
+            player
+        );
+
+        await ctx.reply(
+            `✨ Classe alterada para *${formatClassName(className)}*!`,
+            {
+                parse_mode:
+                    'Markdown'
+            }
+        );
+    } catch (error) {
+        console.error(
+            'Erro class:',
+            error
+        );
+
+        await ctx.reply(
+            '❌ Erro ao trocar classe.'
+        );
     }
 }
 
-module.exports = { handleClass };
+module.exports = {
+    handleClass
+};
