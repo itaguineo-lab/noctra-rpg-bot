@@ -1,8 +1,8 @@
 require('dotenv').config();
 
 const { Telegraf } = require('telegraf');
+const http = require('http');
 
-// ===== HANDLERS =====
 const {
     handleHunt,
     handleAttack,
@@ -25,20 +25,16 @@ const {
     handleTravel
 } = require('./src/handlers/travel');
 
-// ===== MENUS =====
 const {
     mainMenu
 } = require('./src/menus/mainMenu');
 
-// ===== BOT =====
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
 // ===== START =====
 bot.start(async (ctx) => {
     await ctx.reply(
-        `🌑 *Bem-vindo ao Noctra RPG*\n\n` +
-        `Seu destino começa agora.\n` +
-        `Escolha sua próxima ação:`,
+        `🌑 *Bem-vindo ao Noctra RPG*\n\nEscolha sua ação:`,
         {
             parse_mode: 'Markdown',
             ...mainMenu()
@@ -53,7 +49,7 @@ bot.command('inventory', handleInventory);
 bot.command('shop', handleShop);
 bot.command('travel', handleTravel);
 
-// ===== MENU ACTIONS =====
+// ===== ACTIONS =====
 bot.action('hunt', handleHunt);
 bot.action('attack', handleAttack);
 bot.action('flee', handleFlee);
@@ -63,26 +59,31 @@ bot.action('inventory', handleInventory);
 bot.action('shop', handleShop);
 bot.action('travel', handleTravel);
 
-// ===== GLOBAL ERROR HANDLER =====
-bot.catch((err, ctx) => {
-    console.error('❌ Erro no bot:', err);
-
-    try {
-        ctx.reply('❌ Ocorreu um erro interno no Noctra.');
-    } catch (e) {
-        console.error('Erro ao responder usuário:', e);
-    }
+// ===== ERROR =====
+bot.catch((err) => {
+    console.error('Erro do bot:', err);
 });
 
 // ===== LAUNCH =====
-bot.launch()
-    .then(() => {
-        console.log('✅ Noctra RPG online');
-    })
-    .catch((err) => {
-        console.error('❌ Falha ao iniciar bot:', err);
-    });
+(async () => {
+    try {
+        await bot.launch();
+        console.log('✅ Noctra online');
+    } catch (err) {
+        console.error('❌ Falha ao iniciar:', err);
+    }
+})();
 
-// ===== SAFE SHUTDOWN =====
+// ===== KEEP RENDER ALIVE =====
+const PORT = process.env.PORT || 3000;
+
+http.createServer((req, res) => {
+    res.writeHead(200);
+    res.end('Noctra RPG online');
+}).listen(PORT, () => {
+    console.log(`🌐 Servidor ativo na porta ${PORT}`);
+});
+
+// ===== SHUTDOWN =====
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
