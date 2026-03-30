@@ -80,42 +80,18 @@ function processPlayerTurn(fight) {
 function processEnemyTurn(fight) {
     if (fight.status !== 'active') return null;
 
-    if (fight.enemy.frozen) {
-        fight.enemy.frozen = false;
-
-        fight.logs.push(
-            `❄️ ${fight.enemy.name} está congelado!`
-        );
-
-        return null;
-    }
-
     const result = calculateDamage(
         fight.enemy,
         fight.player
     );
 
-    let damage = result.damage;
-
-    if (fight.player.shieldDuration > 0) {
-        damage = Math.floor(
-            damage * (1 - fight.player.shield)
-        );
-
-        fight.player.shieldDuration--;
-
-        if (fight.player.shieldDuration <= 0) {
-            fight.player.shield = 0;
-        }
-    }
-
     fight.player.hp = Math.max(
         0,
-        fight.player.hp - damage
+        fight.player.hp - result.damage
     );
 
     fight.logs.push(
-        `👹 ${fight.enemy.name} causou *${damage}* dano!`
+        `👹 ${fight.enemy.name} causou *${result.damage}* dano!`
     );
 
     if (fight.player.hp <= 0) {
@@ -129,29 +105,19 @@ function processEnemyTurn(fight) {
     fight.turn++;
     fight.logs = trimLogs(fight.logs);
 
-    return {
-        ...result,
-        damage
-    };
+    return result;
 }
 
 function attemptFlee(fight) {
     if (fight.status !== 'active') return false;
 
-    const successChance = 0.6;
-
-    const success = Math.random() <= successChance;
+    const success = Math.random() <= 0.6;
 
     if (success) {
         fight.status = 'fled';
-
-        fight.logs.push(
-            `🏃 Fugiste com sucesso.`
-        );
+        fight.logs.push(`🏃 Fugiste com sucesso.`);
     } else {
-        fight.logs.push(
-            `🚫 Não conseguiste fugir!`
-        );
+        fight.logs.push(`🚫 Não conseguiste fugir!`);
     }
 
     fight.logs = trimLogs(fight.logs);
