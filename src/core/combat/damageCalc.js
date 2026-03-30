@@ -1,28 +1,40 @@
-/**
- * Calcula o dano final de um ataque.
- * @param {number} atk - Ataque do atacante
- * @param {number} def - Defesa do defensor
- * @param {number} critChance - Chance de crítico (0-100)
- */
-function calculateDamage(atk, def, critChance = 5) {
-    // Variação de dano entre 90% e 110%
-    const variance = 0.9 + Math.random() * 0.2;
-    let finalDmg = atk * variance;
+function calculateDamage(attacker, defender, options = {}) {
+    const {
+        multiplier = 1,
+        critBonus = 1.5,
+        minDamage = 1
+    } = options;
 
-    // Sistema de Crítico (Dano x1.5)
-    const isCrit = (Math.random() * 100) <= critChance;
+    const atk = attacker.atk || 1;
+    const def = defender.def || 0;
+    const critChance = attacker.crit || 5;
+
+    const variance = 0.9 + Math.random() * 0.2;
+
+    let rawDamage = atk * variance * multiplier;
+
+    const isCrit = Math.random() * 100 <= critChance;
+
     if (isCrit) {
-        finalDmg *= 1.5;
+        rawDamage *= critBonus;
     }
 
-    // Redução por Defesa (A defesa bloqueia até 50% do valor de def do dano base)
-    // O dano mínimo é sempre 1.
-    const dmgAfterDef = Math.max(1, Math.floor(finalDmg - (def * 0.5)));
+    // defesa escalável e menos linear
+    const mitigation = def / (def + 50);
+
+    const finalDamage = Math.max(
+        minDamage,
+        Math.floor(rawDamage * (1 - mitigation))
+    );
 
     return {
-        damage: dmgAfterDef,
-        isCrit: isCrit
+        damage: finalDamage,
+        isCrit,
+        rawDamage: Math.floor(rawDamage),
+        mitigation: Number(mitigation.toFixed(2))
     };
 }
 
-module.exports = { calculateDamage };
+module.exports = {
+    calculateDamage
+};
