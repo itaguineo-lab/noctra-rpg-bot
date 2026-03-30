@@ -35,6 +35,9 @@ function createDefaultPlayer(id, name = 'Viajante') {
         level: 1,
         xp: 0,
         nox: 0,
+        gold: 0,
+
+        currentMap: 'clareira_sombria',
 
         hp: 0,
         maxHp: 0,
@@ -47,11 +50,14 @@ function createDefaultPlayer(id, name = 'Viajante') {
 
         inventory: [],
         souls: [],
+
         equipment: {
             weapon: null,
             armor: null,
             accessory: null
-        },
+        }
+    };
+}
 
         createdAt: Date.now(),
         updatedAt: Date.now()
